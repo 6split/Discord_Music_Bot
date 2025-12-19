@@ -37,7 +37,10 @@ async def on_message(message : discord.Message):
         
         #Handles all of our shut_down
         if message.content == "!shut_down":
+            await client.close()
+            quit()
             return
+        
 
             
         
