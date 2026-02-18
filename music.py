@@ -10,6 +10,8 @@ from difflib import get_close_matches
 import time
 from sensitive_data import get_spotify_client_secret, get_spotify_client_id
 from youtube import search_youtube, download_from_url
+from autoplay import song_reccomendations
+from settings.settings import get_all_settings, modify_setting, populate_settings_json
 
 SPOTIFY_CLIENT_ID = get_spotify_client_id()
 SPOTIFY_CLIENT_SECRET = get_spotify_client_secret()
@@ -37,8 +39,9 @@ class Music_Manager:
         self.voice_client = new_voice_client
 
     def request_song(self, song_name : str):
-        requested_song = song_from_youtube(song_name)
+        requested_song = song_from_youtube(song_name + " song")
         self.current_queue.put(requested_song)
+        self.current_queue.task_done()
         if not self.voice_client.is_playing() and not self.voice_client.is_paused():
             self.play_next()
         return
@@ -49,6 +52,9 @@ class Music_Manager:
     def resume(self):
         self.voice_client.resume()
     
+    def skip_song(self):
+        self.voice_client.stop()
+
     def _play_song(self, song : Song):
         audio_source = discord.FFmpegPCMAudio(song.filename, executable='C:\\ffmpeg\\bin\\ffmpeg.exe', options=f"-b:a 256")
         self.voice_client.play(audio_source, bitrate=256, signal_type='music')
@@ -57,7 +63,13 @@ class Music_Manager:
     def _create_autoplay_song(self):
             #Set up the next autoplay song
             print("Picking Autoplay song")
-            spotify_song_reccomendations = spotify_reccomendation(self.current_song.name, self.song_history)
+            try:
+                spotify_song_reccomendations = spotify_reccomendation(self.current_song.name, self.song_history)
+            except Exception as e:
+                print(f"Error getting spotify reccomendations: {str(e)}")
+                print("Now using local reccomendations")
+                spotify_song_reccomendations = song_reccomendations(self.current_song.name, autoplayed_songs=self.song_history)
+            
             print(f"Autoplay options: {spotify_song_reccomendations}")
             autoplay_song = song_from_youtube(random.choice(spotify_song_reccomendations))
             self.potential_autoplay = autoplay_song
@@ -75,8 +87,9 @@ class Music_Manager:
             return
 
         #If for some reason we are already playing audio wait until we are not.
-        # while self.voice_client.is_playing() or self.voice_client.is_paused():
-        #     time.sleep(1)
+        while self.voice_client.is_playing() or self.voice_client.is_paused():
+            print("Waiting for current song to finish/for voice client to be free...")
+            time.sleep(1)
             
         if self.current_queue.empty() and self.current_song:
 
@@ -95,7 +108,8 @@ class Music_Manager:
 
             self.current_queue.join()
             if self.current_queue.empty():
-                self._create_autoplay_song()
+                if get_all_settings()["autoplay"]:
+                    self._create_autoplay_song()
 
 def song_from_youtube(search_query):
     result = search_youtube(search_query + " song", 1)[0]
@@ -120,10 +134,10 @@ def spotify_reccomendation(song, autoplayed_songs=[]):
                 song_name = f"{track['name']} by {track['artists'][0]['name']}"
                 song_names.append(song_name)
         count += 1
-    filtered_songs = get_close_matches(song, song_names, 20, cutoff=0.6)
+    filtered_songs = get_close_matches(song, song_names, 20, cutoff=0.8)
     remaining_songs = [s for s in song_names if s not in filtered_songs and s not in autoplayed_songs]
     random.shuffle(remaining_songs)
     return remaining_songs
 
 if __name__ == "__main__":
-    print(spotify_reccomendation("Diamond Eyes Deftones"))
+    print(spotify_reccomendation("Get Lucky Daft Punk"))

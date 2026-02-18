@@ -69,7 +69,7 @@ def song_reccomendations(song_name, top_n=5, popularity_threshold=25, autoplayed
     num_tracks = 0
     reccomendations = []
     for track in tracks_sorted:
-        if track["track_name"] in autoplayed_songs:
+        if track["track_name"] in autoplayed_songs or f"{track['track_name']} by {track['track_artist']}" in autoplayed_songs:
             continue
         if track in reccomendations:
             continue
@@ -77,7 +77,6 @@ def song_reccomendations(song_name, top_n=5, popularity_threshold=25, autoplayed
             num_tracks += 1
             reccomendations.append(f"{track['track_name']} by {track['track_artist']}")
         if int(track["track_popularity"]) >= popularity_threshold and track["track_name"] != current_track["track_name"]:
-            print(f"{track['track_name']} by {track['track_artist']} with popularity {track['track_popularity']}")
             num_tracks += 1
             reccomendations.append(f"{track['track_name']} by {track['track_artist']}")
             if num_tracks >= top_n:
@@ -86,10 +85,15 @@ def song_reccomendations(song_name, top_n=5, popularity_threshold=25, autoplayed
     return reccomendations
 
 if __name__ == "__main__":
+    import random
     load_tracks_from_csv()
-    current_song = "We R Who we R Kesha"
+    current_song = "Get Lucky Daft Punk"
+    played_songs = []
     # print(tracks[:5])  # Print the first 5 tracks to verify they were loaded correctly
-    similar_track = find_most_similar_track(current_song)
-    print(f"Most similar track: {similar_track[0]['track_name']} by {similar_track[0]['track_artist']} with score {similar_track[1]} and genre {similar_track[0]['playlist_genre']}")
-    print("Reccomendations:")
-    reccomendations = song_reccomendations(current_song, top_n=10, popularity_threshold=25) 
+    for i in range(25):
+        similar_track = find_most_similar_track(current_song)
+        #print(f"Most similar track: {similar_track[0]['track_name']} by {similar_track[0]['track_artist']} with score {similar_track[1]} and genre {similar_track[0]['playlist_genre']}")
+        reccomendations = song_reccomendations(current_song, top_n=10, popularity_threshold=45, autoplayed_songs=played_songs)
+        current_song = random.choice(reccomendations)
+        played_songs.append(current_song)
+        print(f"Next song: {current_song}")
