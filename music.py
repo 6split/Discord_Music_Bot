@@ -103,9 +103,8 @@ def song_from_youtube(search_query):
     song = Song(search_query, file, result)
     return song
 
-
 def spotify_reccomendation(song, autoplayed_songs=[]):
-    results = sp.search(q=song, type="playlist", limit=20)
+    results = sp.search(q=song, type="playlist", limit=5)
     song_names = []
     playlists = results.get('playlists', {}).get('items', [])
     count = 0
@@ -127,4 +126,4 @@ def spotify_reccomendation(song, autoplayed_songs=[]):
     return remaining_songs
 
 if __name__ == "__main__":
-    print(spotify_reccomendation("Get Lucky Daft Punk"))
+    print(spotify_reccomendation("Diamond Eyes Deftones"))
