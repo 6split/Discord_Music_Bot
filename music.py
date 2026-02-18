@@ -7,13 +7,12 @@ from dataclasses import dataclass
 import spotipy
 from spotipy.oauth2 import SpotifyClientCredentials
 from difflib import get_close_matches
-from sklearn.metrics.pairwise import cosine_similarity
 import time
-from sensitive_data.spotify_data import spotify_secret, spotify_client_id
+from sensitive_data import get_spotify_client_secret, get_spotify_client_id
 from youtube import search_youtube, download_from_url
 
-SPOTIFY_CLIENT_ID = spotify_client_id()
-SPOTIFY_CLIENT_SECRET = spotify_secret()
+SPOTIFY_CLIENT_ID = get_spotify_client_id()
+SPOTIFY_CLIENT_SECRET = get_spotify_client_secret()
 #Create the spotify client
 sp = spotipy.Spotify(auth_manager=SpotifyClientCredentials(
     client_id=SPOTIFY_CLIENT_ID,
@@ -76,8 +75,8 @@ class Music_Manager:
             return
 
         #If for some reason we are already playing audio wait until we are not.
-        while self.voice_client.is_playing() or self.voice_client.is_paused():
-            time.sleep(1)
+        # while self.voice_client.is_playing() or self.voice_client.is_paused():
+        #     time.sleep(1)
             
         if self.current_queue.empty() and self.current_song:
 
@@ -97,10 +96,6 @@ class Music_Manager:
             self.current_queue.join()
             if self.current_queue.empty():
                 self._create_autoplay_song()
-
-
-            
-
 
 def song_from_youtube(search_query):
     result = search_youtube(search_query + " song", 1)[0]

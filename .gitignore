@@ -1,5 +1,7 @@
-sensitive_data/
+.env
 .venv
 .cache
 music/
 __pycache__
+venv
+.env

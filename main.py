@@ -1,12 +1,12 @@
 import discord
 
-from sensitive_data.sensitive_data import get_application_id, get_application_token
+from sensitive_data.credentials import get_discord_application_id, get_discord_application_token
 from settings.settings import get_all_settings, modify_setting, populate_settings_json
 
 #We can only connect to one voice channel, so it is fine to have a global variable here
 current_voice_channel = None
 #Create the discord client
-client = discord.Client(intents=discord.Intents.all(), application_id=get_application_id())
+client = discord.Client(intents=discord.Intents.all(), application_id=get_discord_application_id())
 
 @client.event
 async def on_ready():
@@ -53,4 +53,4 @@ async def on_message(message : discord.Message):
 
 #Run the discord client
 print("Running Jarvis...")
-client.run(get_application_token())
+client.run(get_discord_application_token())
