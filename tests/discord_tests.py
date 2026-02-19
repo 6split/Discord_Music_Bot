@@ -3,6 +3,15 @@ import discord
 import time
 import asyncio
 from settings.settings import get_all_settings, modify_setting, populate_settings_json
+import tools
+from message_history import load_message_history, create_message, save_new_message, clear_message_history
+
+def load_message_history_test(client : discord.Client, music_manager : Music_Manager):
+    try:
+        load_message_history()  # Just test that it can load without error
+        return create_test_return(success=True, message="Load Message History Test Passed")
+    except Exception as e:
+        return create_test_return(success=False, message=f"Load Message History Test Failed: {str(e)}")
 
 def request_song_test(client : discord.Client, music_manager : Music_Manager):
     try:
@@ -35,10 +44,13 @@ def skip_song_test(client : discord.Client, music_manager : Music_Manager):
         modify_setting("autoplay", False)  # Disable autoplay for testing
         if not client.voice_clients[0].is_playing():
             assert False, "Voice client is not playing"
+        while client.voice_clients[0].is_playing():
+            music_manager.skip_song()
+            time.sleep(0.1)  # Wait for the song to skip
         music_manager.request_song("Never Gonna Give You Up")
         time.sleep(0.5)  # Wait for the song to start playing
         music_manager.skip_song()
-        time.sleep(0.5)  # Wait for the song to skip
+        time.sleep(2)  # Wait for the song to skip
         if client.voice_clients[0].is_playing():
             assert False, "Song did not skip"
         return create_test_return(success=True, message="Skip Song Test Passed")
@@ -63,6 +75,34 @@ def pause_test(client : discord.Client, music_manager : Music_Manager):
     except Exception as e:
         return create_test_return(success=False, message=f"Pause/Resume Test Failed: {str(e)}")
 
+def ollama_tool_test(client : discord.Client, music_manager : Music_Manager):
+    try:
+        tools.init_tools(music_manager)
+        tools.request_song_tool("Never Gonna Give You Up")
+        time.sleep(0.5)  # Wait for the song to start playing
+        if not client.voice_clients[0].is_playing():
+            assert False, "Tool Play did not request the song correctly"
+        music_manager.skip_song()  # Skip the song to clean up
+        return create_test_return(success=True, message="Tool Play Test Passed")
+    except Exception as e:
+        return create_test_return(success=False, message=f"Tool Play Test Failed: {str(e)}")
+
+def ollama_play_test(client : discord.Client, music_manager : Music_Manager):
+    try:
+        clear_message_history()  # Clear message history to ensure a clean test
+        user_message = f"6split: Jarvis play Never Gonna Give You Up"
+        message = create_message('user', user_message)
+        save_new_message(message)
+        tools.init_tools(music_manager)
+        response = tools.chat_with_tools()
+        time.sleep(0.5)  # Wait for the song to start playing
+        if not client.voice_clients[0].is_playing():
+            assert False, "Ollama tool did not request the song correctly"
+        music_manager.skip_song()  # Skip the song to clean up
+        return create_test_return(success=True, message="Ollama Tool Test Passed")
+    except Exception as e:
+        return create_test_return(success=False, message=f"Ollama Tool Test Failed: {str(e)}")
+
 def create_test_return(success=True, message="Test Successful"):
     string = ""
     if success:
@@ -73,10 +113,13 @@ def create_test_return(success=True, message="Test Successful"):
     return string
 
 TESTS_TO_RUN = [
+    load_message_history_test,
     request_song_test,
     skip_song_test,
     auto_play_test,
     pause_test,
+    ollama_tool_test,
+    ollama_play_test,
 ]
 
 def run_tests(client : discord.Client, voice_channel : discord.VoiceChannel, music_manager : Music_Manager, debug_func=None):

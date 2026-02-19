@@ -57,7 +57,7 @@ class Music_Manager:
 
     def _play_song(self, song : Song):
         audio_source = discord.FFmpegPCMAudio(song.filename, executable='C:\\ffmpeg\\bin\\ffmpeg.exe', options=f"-b:a 256")
-        self.voice_client.play(audio_source, bitrate=256, signal_type='music')
+        self.voice_client.play(audio_source, bitrate=256, signal_type='music', after=self.play_next)
         self.song_history.append(song.name)
 
     def _create_autoplay_song(self):
@@ -73,8 +73,9 @@ class Music_Manager:
             print(f"Autoplay options: {spotify_song_reccomendations}")
             autoplay_song = song_from_youtube(random.choice(spotify_song_reccomendations))
             self.potential_autoplay = autoplay_song
+            print(f"Set potential autoplay song to: {self.potential_autoplay.name}")
 
-    def play_next(self):
+    def play_next(self, Error=None):
         """
         Called when a song ends or when requesting a song to then either play the next song in the queue, or autoplay a song
         
@@ -107,9 +108,8 @@ class Music_Manager:
             self._play_song(self.current_song)
 
             self.current_queue.join()
-            if self.current_queue.empty():
-                if get_all_settings()["autoplay"]:
-                    self._create_autoplay_song()
+        if self.current_queue.empty() and get_all_settings()["autoplay"]:
+            self._create_autoplay_song()
 
 def song_from_youtube(search_query):
     result = search_youtube(search_query + " song", 1)[0]

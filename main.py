@@ -4,9 +4,13 @@ from sensitive_data.credentials import get_discord_application_id, get_discord_a
 from settings.settings import get_all_settings, modify_setting, populate_settings_json
 from music import Music_Manager
 from tests.discord_tests import run_tests
+import tools
+import threading
+from message_history import load_message_history, create_message, save_new_message
 #We can only connect to one voice channel, so it is fine to have a global variable here
 current_voice_channel = None
 music_manager_instance = None
+request_threads = []
 #Create the discord client
 client = discord.Client(intents=discord.Intents.all(), application_id=get_discord_application_id())
 
@@ -75,12 +79,21 @@ async def on_message(message : discord.Message):
                 return
             #Just connect to the first voice channel we find, since we can only be in one at a time
             voice_channel = potential_voice_channels[0]
+            tests_passed = 0
+            total_tests = 0
             def debug_print(result):
+                nonlocal tests_passed, total_tests
                 print(result)
+                if isinstance(result, str):
+                    total_tests += 1
+                    if result.startswith(":white_check_mark:"):
+                        tests_passed += 1
                 asyncio.run_coroutine_threadsafe(message.reply(result), client.loop)
             await join_voice_channel(voice_channel)
             run_tests(client, voice_channel, music_manager_instance, debug_func=debug_print)
             await leave_voice_channel()
+            await asyncio.sleep(0.05)  # Wait for all test results to be sent before sending the final message
+            await message.reply(f"Finished running tests. {tests_passed}/{total_tests} tests passed.")
             return
 
         #Handles shutting down
@@ -90,6 +103,28 @@ async def on_message(message : discord.Message):
             quit()
             return
         
+    if message.content.lower().__contains__("jarvis"):
+        current_message = await message.reply("Processing...")
+
+        #Save the user's message to our message history so that it can be used in the future for context in our conversations with the AI
+        user_message = f"{message.author.name}: {message.content}"
+        message = create_message('user', user_message)
+        save_new_message(message)
+
+        def debug(message_to_print):
+            print(message_to_print)
+            asyncio.run_coroutine_threadsafe(current_message.edit(content=message_to_print), client.loop)
+        while len(request_threads) > 0:
+            debug("Waiting for AI to respond to other message...")
+            thread = request_threads[0]
+            if not thread.is_alive():
+                request_threads.pop(0)
+        #Sets up our tools with the music manager and debug function so that they can be used in the chat_with_tools function
+        tools.init_tools(music_manager_instance, debug_func=debug)
+        thread = threading.Thread(target=tools.chat_with_tools)
+        thread.start()
+        request_threads.append(thread)
+
     return
 
 #Run the discord client
