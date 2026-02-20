@@ -491,5 +491,34 @@
     {
         "role": "assistant",
         "content": "\"**Diamond Eyes by Deftones**\" has been added to the queue! 🎶 Let me know if you'd like to adjust the playlist or control the music further. 😊"
+    },
+    {
+        "role": "user",
+        "content": "6split: Jarvis skip"
+    },
+    {
+        "role": "tool",
+        "tool_name": "skip_song_tool",
+        "content": "Skipped song"
+    },
+    {
+        "role": "assistant",
+        "content": "The current song has been skipped! 🎧  \n**Next up:** \"Diamond Eyes\" by Deftones 🎶  \nLet me know if you'd like to adjust the playlist further! 😊"
+    },
+    {
+        "role": "user",
+        "content": "6split: Jarvis what song is this?"
+    },
+    {
+        "role": "assistant",
+        "content": "The song currently playing is:  \n**\"Diamond Eyes\" by Deftones** 🎶  \n\nLet me know if you'd like to adjust the playlist or explore more tracks! 😊"
+    },
+    {
+        "role": "user",
+        "content": "6split: Jarvis the previous song ended. What song is this?"
+    },
+    {
+        "role": "assistant",
+        "content": "The song queue is currently empty, so there's no song playing at the moment. 🎵 Would you like to add a new track to start playback? I'm here to help! 😊"
     }
 ]

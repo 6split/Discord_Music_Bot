@@ -1,4 +1,6 @@
 import json
+from datetime import datetime
+
 
 def save_message_history(message_history, file_path='message_history.json'):
     """Saves the message history to a JSON file.
@@ -53,7 +55,9 @@ def create_message(role, content):
     Returns:
         dict: A dictionary representing the message.
     """
-    return {"role": role, "content": content}
+    now = datetime.now()
+    formatted = now.strftime("%m/%d/%Y %H:%M:%S")
+    return {"role": role, "content": f"{formatted}--{content}"}
 
 if __name__ == "__main__":
     # Example usage
