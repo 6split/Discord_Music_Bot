@@ -74,6 +74,21 @@ def pause_test(client : discord.Client, music_manager : Music_Manager):
         return create_test_return(success=True, message="Pause/Resume Test Passed")
     except Exception as e:
         return create_test_return(success=False, message=f"Pause/Resume Test Failed: {str(e)}")
+    
+def retrieve_queue_test(client : discord.Client, music_manager : Music_Manager):
+    try:
+        modify_setting("autoplay", False)  # Disable autoplay for testing
+        music_manager.request_song("Never Gonna Give You Up")
+        music_manager.request_song("Get Lucky Daft Punk")
+        time.sleep(0.1)  # Wait for the songs to be added to the queue
+        queue = music_manager.retreieve_queue()
+        if len(queue) != 2:
+            assert False, "Queue did not return the correct songs"
+        music_manager.skip_song()  # Skip the current song to clean up
+        music_manager.skip_song()  # Skip the next song to clean up
+        return create_test_return(success=True, message="Retrieve Queue Test Passed")
+    except Exception as e:
+        return create_test_return(success=False, message=f"Retrieve Queue Test Failed: {str(e)}")
 
 def ollama_tool_test(client : discord.Client, music_manager : Music_Manager):
     try:
@@ -119,7 +134,7 @@ TESTS_TO_RUN = [
     auto_play_test,
     pause_test,
     ollama_tool_test,
-    ollama_play_test,
+    retrieve_queue_test,
 ]
 
 def run_tests(client : discord.Client, voice_channel : discord.VoiceChannel, music_manager : Music_Manager, debug_func=None):

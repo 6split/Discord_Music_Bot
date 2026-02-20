@@ -46,6 +46,17 @@ class Music_Manager:
             self.play_next()
         return
     
+    def retreieve_current_song(self):
+        """Returns the currently playing song, or a message indicating that no song is currently playing."""
+        if self.current_song:
+            return f"Currently playing: {self.current_song}"
+        else:
+            return "No song is currently playing."
+
+    def retreieve_queue(self):
+        """Returns a list of the songs currently in the queue."""
+        return list(self.current_queue.queue)
+    
     def pause(self):
         self.voice_client.pause()
 
@@ -54,6 +65,7 @@ class Music_Manager:
     
     def skip_song(self):
         self.voice_client.stop()
+
 
     def _play_song(self, song : Song):
         audio_source = discord.FFmpegPCMAudio(song.filename, executable='C:\\ffmpeg\\bin\\ffmpeg.exe', options=f"-b:a 256")
@@ -110,6 +122,11 @@ class Music_Manager:
             self.current_queue.join()
         if self.current_queue.empty() and get_all_settings()["autoplay"]:
             self._create_autoplay_song()
+            if not self.voice_client.is_playing() and not self.voice_client.is_paused() and self.potential_autoplay:
+                assert isinstance(self.potential_autoplay, Song)
+                self.current_song = self.potential_autoplay
+                self._play_song(self.current_song)
+                self.potential_autoplay = None
 
 def song_from_youtube(search_query):
     result = search_youtube(search_query + " song", 1)[0]

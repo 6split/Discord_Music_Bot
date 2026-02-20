@@ -115,7 +115,6 @@ async def on_message(message : discord.Message):
             print(message_to_print)
             asyncio.run_coroutine_threadsafe(current_message.edit(content=message_to_print), client.loop)
         while len(request_threads) > 0:
-            debug("Waiting for AI to respond to other message...")
             thread = request_threads[0]
             if not thread.is_alive():
                 request_threads.pop(0)
