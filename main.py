@@ -6,6 +6,7 @@ from music import Music_Manager
 from tests.discord_tests import run_tests
 import tools
 import threading
+import time
 from message_history import load_message_history, create_message, save_new_message
 #We can only connect to one voice channel, so it is fine to have a global variable here
 current_voice_channel = None
@@ -26,6 +27,7 @@ async def join_voice_channel(voice_channel : discord.VoiceChannel):
     current_voice_channel = voice_channel
     voice = await voice_channel.connect()
     music_manager_instance = Music_Manager(voice)
+    music_manager_instance.update_set_presence_function(set_presence_tool)
 
 async def leave_voice_channel():
     global current_voice_channel, music_manager_instance
@@ -33,6 +35,20 @@ async def leave_voice_channel():
         await client.voice_clients[0].disconnect()
     current_voice_channel = None
     music_manager_instance = None
+
+async def set_presence(status : str):
+    print(f"Setting presence to: {status}")
+    await client.change_presence(activity=discord.CustomActivity(status))
+
+def set_presence_tool(status):
+    """Tool function to set the bot's presence status."""
+    """Args:
+        status (str): The status message to set for the bot's presence.
+    Returns:
+        str: A message indicating the new presence status.
+    """
+    asyncio.run_coroutine_threadsafe(set_presence(status), client.loop)
+    return f"Set presence to: {status}"
 
 @client.event
 async def on_message(message : discord.Message):
@@ -68,6 +84,16 @@ async def on_message(message : discord.Message):
             await leave_voice_channel()
             await message.reply("Left voice channel.")
             return
+        
+        #Command for skipping the current song
+        if message.content == "!ts":
+            if music_manager_instance is not None:
+                music_manager_instance.skip_song()
+                await message.reply("Skipped current song.")
+            else:
+                await message.reply("Not connected to a voice channel.")
+            return
+
         
         #Runs our test suite, replying with the results of each test
         if message.content == "!test":
@@ -111,9 +137,14 @@ async def on_message(message : discord.Message):
         message = create_message('user', user_message)
         save_new_message(message)
 
+        debug_queue = []
         def debug(message_to_print):
-            print(message_to_print)
-            asyncio.run_coroutine_threadsafe(current_message.edit(content=message_to_print), client.loop)
+            for debug_coroutine in debug_queue:
+                while not debug_coroutine.done():
+                    time.sleep(0.1)
+            debug_queue.clear()
+            debug_coroutine = asyncio.run_coroutine_threadsafe(current_message.edit(content=message_to_print), client.loop)
+            debug_queue.append(debug_coroutine)
         while len(request_threads) > 0:
             thread = request_threads[0]
             if not thread.is_alive():

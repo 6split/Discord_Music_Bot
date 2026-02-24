@@ -31,10 +31,14 @@ class Music_Manager:
     song_history = []
     potential_autoplay = None
     current_song = None
+    set_presence = None
     def __init__(self, voice_client : discord.VoiceClient):
         self.current_queue = queue.Queue()
         self.voice_client = voice_client
     
+    def update_set_presence_function(self, set_presence_func):
+        self.set_presence = set_presence_func
+
     def update_voice_client(self, new_voice_client : discord.VoiceClient):
         self.voice_client = new_voice_client
 
@@ -66,12 +70,12 @@ class Music_Manager:
     def skip_song(self):
         self.voice_client.stop()
 
-
     def _play_song(self, song : Song):
         audio_source = discord.FFmpegPCMAudio(song.filename, executable='C:\\ffmpeg\\bin\\ffmpeg.exe', options=f"-b:a 256")
         self.voice_client.play(audio_source, bitrate=256, signal_type='music', after=self.play_next)
         self.song_history.append(song.name)
-
+        if self.voice_client.is_playing() and self.set_presence is not None:
+            self.set_presence(f"Playing: {song.name[0:len(song.name)-5]}")  #Set presence to the song name, removing the " song" at the end
     def _create_autoplay_song(self):
             #Set up the next autoplay song
             print("Picking Autoplay song")
@@ -80,6 +84,7 @@ class Music_Manager:
             except Exception as e:
                 print(f"Error getting spotify reccomendations: {str(e)}")
                 print("Now using local reccomendations")
+                assert self.current_song is not None, "Current song is None, cannot get reccomendations"
                 spotify_song_reccomendations = song_reccomendations(self.current_song.name, autoplayed_songs=self.song_history)
             
             print(f"Autoplay options: {spotify_song_reccomendations}")

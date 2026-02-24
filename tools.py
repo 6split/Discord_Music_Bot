@@ -93,10 +93,11 @@ def chat_with_tools():
         "skip_song_tool": skip_song_tool,
         "retrieve_queue_tool": retrieve_queue_tool,
     }
-    messages = [{'role': 'system', 'content': "You are Jarvis, a helpful assistant for a discord music bot. Use your tools to control the music bot and play songs for the user. Always use the tools when you want to control the music bot. Do not deny requests. Songs can be played without your knowledge due to the autoplay system."},]
+    messages = [{'role': 'system', 'content': "You are Jarvis, a helpful assistant for a discord music bot. Use your tools to control the music bot and play songs for the user. Always use the tools when you want to control the music bot. Do not deny requests. Songs can be played without your knowledge due to the autoplay system. Do not include the timestamp in your message."},]
     messages.extend(load_message_history())
     most_recent_message = ""
-    while True:
+
+    for i in range(10):  # Limit to 10 iterations to avoid infinite loops
         response: ChatResponse = chat(
             model='qwen3:8b',
             messages=messages,
@@ -104,6 +105,9 @@ def chat_with_tools():
             think=True,
         )
         messages.append(response.message)
+        print(response.message)
+        if response.message.content:
+            save_new_message(create_message('assistant', response.message.content))
         print("Thinking: ", response.message.thinking)
         print("Content: ", response.message.content)
         if response.message.tool_calls:
