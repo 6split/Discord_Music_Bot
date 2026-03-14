@@ -62,6 +62,11 @@ def find_most_similar_track(query):
     return best_match, best_score
 
 def song_reccomendations(song_name, top_n=5, popularity_threshold=25, autoplayed_songs=[]):
+
+    #Automatically load tracks from csv
+    if len(tracks) < 1:
+        load_tracks_from_csv()
+    
     current_track = find_most_similar_track(song_name)[0]
     for track in tracks:
         track["similarity_score"] = compute_distance(current_track, track)

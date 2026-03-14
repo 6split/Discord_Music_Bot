@@ -81,10 +81,13 @@ class Music_Manager:
             print("Picking Autoplay song")
             try:
                 spotify_song_reccomendations = spotify_reccomendation(self.current_song.name, self.song_history)
+                if len(spotify_song_reccomendations) < 1:
+                    raise Exception("No autoplay options")
             except Exception as e:
                 print(f"Error getting spotify reccomendations: {str(e)}")
                 print("Now using local reccomendations")
                 assert self.current_song is not None, "Current song is None, cannot get reccomendations"
+                
                 spotify_song_reccomendations = song_reccomendations(self.current_song.name, autoplayed_songs=self.song_history)
             
             print(f"Autoplay options: {spotify_song_reccomendations}")
@@ -162,4 +165,6 @@ def spotify_reccomendation(song, autoplayed_songs=[]):
     return remaining_songs
 
 if __name__ == "__main__":
-    print(spotify_reccomendation("Get Lucky Daft Punk"))
+
+    # print(spotify_reccomendation("Get Lucky Daft Punk"))
+    print(song_reccomendations("Get Lucky Daft Punk"))

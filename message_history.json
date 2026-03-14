@@ -1,28 +1,41 @@
 [
     {
         "role": "user",
-        "content": "02/20/2026 15:45:09--6split: Jarvis can you play Miku"
+        "content": "03/13/2026 22:32:47--6split: Jarvis play In the Pool Chainsaw man"
     },
     {
         "role": "tool",
         "tool_name": "request_song_tool",
-        "content": "Requested song: Miku"
+        "content": "Requested song: In the Pool Chainsaw man"
     },
     {
         "role": "assistant",
-        "content": "02/20/2026 15:45:56--The song \"Miku\" has been requested and is now playing! 🎶 Let me know if you'd like to add more songs or control the playlist."
-    },
-    {
-        "role": "assistant",
-        "content": "02/20/2026 15:45:57--The song \"Miku\" has been requested and is now playing! 🎶 Let me know if you'd like to add more songs or control the playlist."
+        "content": "03/13/2026 22:32:53--\"**In the Pool Chainsaw man**\" has been added to the queue! 🎶 Let me know if you'd like to adjust the playlist or control the playback."
     },
     {
         "role": "user",
-        "content": "02/20/2026 15:48:24--6split: Jarvis play Popipopipopipo"
+        "content": "03/13/2026 22:33:16--6split: Jarvis add Kickback to the queue"
     },
     {
         "role": "tool",
         "tool_name": "request_song_tool",
-        "content": "Requested song: Popipopipopipo"
+        "content": "Requested song: Kickback"
+    },
+    {
+        "role": "assistant",
+        "content": "03/13/2026 22:33:23--03/13/2026 22:33:22--\"**Kickback**\" has been added to the queue! 🎶 Want to manage the playlist or control playback? Just let me know!"
+    },
+    {
+        "role": "user",
+        "content": "03/13/2026 22:36:02--6split: Jarvis add You Say Run from MHA"
+    },
+    {
+        "role": "tool",
+        "tool_name": "request_song_tool",
+        "content": "Requested song: You Say Run from MHA"
+    },
+    {
+        "role": "assistant",
+        "content": "03/13/2026 22:36:09--03/13/2026 22:36:15--\"**You Say Run from MHA**\" has been added to the queue! 🎶 Still need more songs, or would you like to control the playback? Just give me a shout!"
     }
 ]

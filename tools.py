@@ -93,7 +93,7 @@ def chat_with_tools():
         "skip_song_tool": skip_song_tool,
         "retrieve_queue_tool": retrieve_queue_tool,
     }
-    messages = [{'role': 'system', 'content': "You are Jarvis, a helpful assistant for a discord music bot. Use your tools to control the music bot and play songs for the user. Always use the tools when you want to control the music bot. Do not deny requests. Songs can be played without your knowledge due to the autoplay system. Do not include the timestamp in your message."},]
+    messages = [{'role': 'system', 'content': "You are Jarvis, a helpful assistant for a discord music bot. Use your tools to control the music bot and play songs for the user. Always use the tools when you want to control the music bot. Do not deny requests. Songs can be played without your knowledge due to the autoplay system. Do not include ANY timestamps in your response, they will be automatically added afterwards."},]
     messages.extend(load_message_history())
     most_recent_message = ""
 
@@ -104,12 +104,13 @@ def chat_with_tools():
             tools=[request_song_tool, pause_tool, resume_tool, skip_song_tool, retrieve_queue_tool],
             think=True,
         )
-        messages.append(response.message)
         print(response.message)
-        if response.message.content:
-            save_new_message(create_message('assistant', response.message.content))
         print("Thinking: ", response.message.thinking)
         print("Content: ", response.message.content)
+
+        #This deals with the temporary memory, for thinking etc.
+        if response.message.content or response.message.thinking:
+            messages.append(response.message)
         if response.message.tool_calls:
             for tc in response.message.tool_calls:
                 if tc.function.name in available_functions:
@@ -132,12 +133,19 @@ def chat_with_tools():
             if not response.message.thinking and not thinking:
                 if response.message.content:
                     most_recent_message = response.message.content
-                break  # Wait for any final messages to be processed
+                    new_message = create_message('assistant', response.message.content)
+                    save_new_message(new_message)
+                break
             elif response.message.thinking:
                 debug_function(f"Thinking: {response.message.thinking}")
+            
     time.sleep(0.5)  # Small delay to ensure all messages are processed before sending the final response
     if debug_function is not None:
-        debug_function(f"{most_recent_message}")
+        if not most_recent_message:
+            most_recent_message = "Request Fufilled."
+            debug_function(f"{most_recent_message}")
+        else:
+            debug_function(f"{most_recent_message}")
     save_new_message(create_message('assistant', most_recent_message))
     return most_recent_message
 

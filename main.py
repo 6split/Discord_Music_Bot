@@ -52,7 +52,6 @@ def set_presence_tool(status):
 
 @client.event
 async def on_message(message : discord.Message):
-    
     #If it's our own message do not respond
     if message.author == client.user:
         return
@@ -154,7 +153,6 @@ async def on_message(message : discord.Message):
         thread = threading.Thread(target=tools.chat_with_tools)
         thread.start()
         request_threads.append(thread)
-
     return
 
 #Run the discord client
