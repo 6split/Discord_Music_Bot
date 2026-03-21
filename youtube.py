@@ -126,7 +126,7 @@ def list_formats(url):
                   f"Extension: {ext}, "
                   f"Audio codec: {acodec}, "
                   f"Filesize: {filesize}")
-    
+
 if __name__ == "__main__":
     urls = search_youtube("hey ya!")
     download_from_url(urls[0])

@@ -1,20 +1,20 @@
 [
     {
         "role": "user",
-        "content": "03/13/2026 22:32:47--6split: Jarvis play In the Pool Chainsaw man"
+        "content": "03/14/2026 00:55:37--6split: Jarvis play Iris Out chainsaw man"
     },
     {
         "role": "tool",
         "tool_name": "request_song_tool",
-        "content": "Requested song: In the Pool Chainsaw man"
+        "content": "Requested song: Iris Out chainsaw man"
     },
     {
         "role": "assistant",
-        "content": "03/13/2026 22:32:53--\"**In the Pool Chainsaw man**\" has been added to the queue! 🎶 Let me know if you'd like to adjust the playlist or control the playback."
+        "content": "03/14/2026 00:55:44--Playing \"Iris Out chainsaw man\" for you! 🎵"
     },
     {
         "role": "user",
-        "content": "03/13/2026 22:33:16--6split: Jarvis add Kickback to the queue"
+        "content": "03/14/2026 00:57:49--6split: Jarvis add Kickback to the queue"
     },
     {
         "role": "tool",
@@ -23,19 +23,118 @@
     },
     {
         "role": "assistant",
-        "content": "03/13/2026 22:33:23--03/13/2026 22:33:22--\"**Kickback**\" has been added to the queue! 🎶 Want to manage the playlist or control playback? Just let me know!"
+        "content": "03/14/2026 00:57:55--03/14/2026 00:58:02--Added \"Kickback\" to the queue! 🎶"
     },
     {
         "role": "user",
-        "content": "03/13/2026 22:36:02--6split: Jarvis add You Say Run from MHA"
+        "content": "03/14/2026 01:01:24--6split: Jarvis add lulu mrs green apple"
     },
     {
         "role": "tool",
         "tool_name": "request_song_tool",
-        "content": "Requested song: You Say Run from MHA"
+        "content": "Requested song: lulu mrs green apple"
     },
     {
         "role": "assistant",
-        "content": "03/13/2026 22:36:09--03/13/2026 22:36:15--\"**You Say Run from MHA**\" has been added to the queue! 🎶 Still need more songs, or would you like to control the playback? Just give me a shout!"
+        "content": "03/14/2026 01:01:31--03/14/2026 01:02:10--03/14/2026 01:02:17--Added \"lulu mrs green apple\" to the queue! 🎶"
+    },
+    {
+        "role": "user",
+        "content": "03/14/2026 01:02:37--6split: Jarvis add sustain/Decay by Drivealone"
+    },
+    {
+        "role": "tool",
+        "tool_name": "request_song_tool",
+        "content": "Requested song: sustain/Decay by Drivealone"
+    },
+    {
+        "role": "assistant",
+        "content": "03/14/2026 01:02:44--03/14/2026 01:03:15--03/14/2026 01:03:22--03/14/2026 01:03:29--Added \"sustain/Decay by Drivealone\" to the queue! 🎶"
+    },
+    {
+        "role": "user",
+        "content": "03/14/2026 01:06:29--6split: Jarvis add Umapyoi Legend"
+    },
+    {
+        "role": "tool",
+        "tool_name": "request_song_tool",
+        "content": "Requested song: Umapyoi Legend"
+    },
+    {
+        "role": "assistant",
+        "content": "03/14/2026 01:06:36--03/14/2026 01:06:52--03/14/2026 01:07:05--03/14/2026 01:07:12--Added \"Umapyoi Legend\" to the queue! 🎶"
+    },
+    {
+        "role": "user",
+        "content": "03/14/2026 18:36:01--6split: Jarvis can you play In the Pool Chainsaw man"
+    },
+    {
+        "role": "tool",
+        "tool_name": "request_song_tool",
+        "content": "Requested song: In the Pool Chainsaw man"
+    },
+    {
+        "role": "assistant",
+        "content": "03/14/2026 18:36:09--03/14/2026 18:36:08--03/14/2026 18:36:15--03/14/2026 18:36:22--03/14/2026 18:36:29--Playing \"In the Pool Chainsaw man\" for you! 🎵"
+    },
+    {
+        "role": "user",
+        "content": "03/14/2026 18:37:02--6split: Jarvis what song is playing currently?"
+    },
+    {
+        "role": "assistant",
+        "content": "03/14/2026 18:37:05--Request Fufilled."
+    },
+    {
+        "role": "user",
+        "content": "03/14/2026 18:38:04--6split: Jarvis add Nightcall to the queue"
+    },
+    {
+        "role": "tool",
+        "tool_name": "request_song_tool",
+        "content": "Requested song: Nightcall"
+    },
+    {
+        "role": "assistant",
+        "content": "03/14/2026 18:38:13--03/14/2026 18:38:11--03/14/2026 18:38:18--Added \"Nightcall\" to the queue! 🎶"
+    },
+    {
+        "role": "user",
+        "content": "03/14/2026 18:39:02--6split: Jarvis add Get lucky Daft punk"
+    },
+    {
+        "role": "tool",
+        "tool_name": "request_song_tool",
+        "content": "Requested song: Get lucky Daft punk"
+    },
+    {
+        "role": "assistant",
+        "content": "03/14/2026 18:39:10--03/14/2026 18:39:09--03/14/2026 18:39:16--03/14/2026 18:39:23--Added \"Get lucky Daft punk\" to the queue! 🎶"
+    },
+    {
+        "role": "user",
+        "content": "03/14/2026 18:40:40--6split: Jarvis add Umapoyi Legend to the queue"
+    },
+    {
+        "role": "tool",
+        "tool_name": "request_song_tool",
+        "content": "Requested song: Umapoyi Legend"
+    },
+    {
+        "role": "assistant",
+        "content": "03/14/2026 18:40:48--03/14/2026 18:40:47--03/14/2026 18:40:45--03/14/2026 18:40:52--Added \"Umapoyi Legend\" to the queue! 🎶"
+    },
+    {
+        "role": "user",
+        "content": "03/14/2026 18:41:57--6split: Jarvis can you add Murder on the Dance Floor"
+    },
+    {
+        "role": "tool",
+        "tool_name": "request_song_tool",
+        "content": "Requested song: Murder on the Dance Floor /think"
+    },
+    {
+        "role": "assistant",
+        "content": "03/14/2026 18:42:09--03/14/2026 18:42:15--03/14/2026 18:42:04--03/14/2026 18:42:11--Added \"Murder on the Dance Floor /think\" to the queue! 🎶"
     }
 ]

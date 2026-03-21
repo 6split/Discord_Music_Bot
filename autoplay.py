@@ -62,7 +62,7 @@ def find_most_similar_track(query):
     return best_match, best_score
 
 def song_reccomendations(song_name, top_n=5, popularity_threshold=25, autoplayed_songs=[]):
-
+    
     #Automatically load tracks from csv
     if len(tracks) < 1:
         load_tracks_from_csv()

@@ -3,6 +3,7 @@ import random
 #Thread safe queue implementation
 import queue
 
+from ollama import chat, ChatResponse
 from dataclasses import dataclass
 import spotipy
 from spotipy.oauth2 import SpotifyClientCredentials
@@ -87,8 +88,11 @@ class Music_Manager:
                 print(f"Error getting spotify reccomendations: {str(e)}")
                 print("Now using local reccomendations")
                 assert self.current_song is not None, "Current song is None, cannot get reccomendations"
-                
-                spotify_song_reccomendations = song_reccomendations(self.current_song.name, autoplayed_songs=self.song_history)
+                srecc = chatbot_reccomendation(self.current_song.name, self.song_history)
+                if srecc:
+                    spotify_song_reccomendations = [srecc]
+                else:
+                    spotify_song_reccomendations = song_reccomendations(self.current_song.name, autoplayed_songs=self.song_history)
             
             print(f"Autoplay options: {spotify_song_reccomendations}")
             autoplay_song = song_from_youtube(random.choice(spotify_song_reccomendations))
@@ -164,7 +168,28 @@ def spotify_reccomendation(song, autoplayed_songs=[]):
     random.shuffle(remaining_songs)
     return remaining_songs
 
-if __name__ == "__main__":
+def chatbot_reccomendation(song, autoplayed_songs=[]):
+    messages = [{'role': 'system', 'content': "You are an advanced AI autoplay system which responds with a singular song_name by artist name when asked for a reccomendation"},]
+    messages.extend([{'role': 'user', 'content': f"Reccomend a song similar to {song}"}])
+    most_recent_message = ""
 
+    for i in range(10):  # Limit to 10 iterations to avoid infinite loops
+        response: ChatResponse = chat(
+            model='qwen3:8b',
+            messages=messages,
+            think=True,
+        )
+        if response.message.thinking:
+            print(f"Think: {response.message.thinking}")
+        if response.message.content:
+            return response.message.content
+        messages.append(response.message)
+        if response.message.thinking:
+            continue
+    return None
+
+if __name__ == "__main__":
+    song_name = "Sustain/Decay Drivealone"
     # print(spotify_reccomendation("Get Lucky Daft Punk"))
-    print(song_reccomendations("Get Lucky Daft Punk"))
+    print(song_reccomendations(song_name))
+    print(f"Response: {chatbot_reccomendation(song_name)}")
