@@ -6,7 +6,7 @@ import queue
 from ollama import chat, ChatResponse
 from dataclasses import dataclass
 import spotipy
-from spotipy.oauth2 import SpotifyClientCredentials
+from spotipy.oauth2 import SpotifyClientCredentials, SpotifyOAuth
 from difflib import get_close_matches
 import time
 from sensitive_data import get_spotify_client_secret, get_spotify_client_id
@@ -20,6 +20,12 @@ SPOTIFY_CLIENT_SECRET = get_spotify_client_secret()
 sp = spotipy.Spotify(auth_manager=SpotifyClientCredentials(
     client_id=SPOTIFY_CLIENT_ID,
     client_secret=SPOTIFY_CLIENT_SECRET
+))
+sp = spotipy.Spotify(auth_manager=SpotifyOAuth(
+    client_id=SPOTIFY_CLIENT_ID,
+    client_secret=SPOTIFY_CLIENT_SECRET,
+    redirect_uri="http://127.0.0.1:8000/callback",
+    scope="playlist-read-private" # Add required scopes here
 ))
 
 @dataclass
@@ -156,7 +162,7 @@ def spotify_reccomendation(song, autoplayed_songs=[]):
             break
         print(playlist)
         playlist_id = playlist['id']
-        tracks = sp.playlist_tracks(playlist_id)
+        tracks = sp.playlist_items(playlist_id)
         for item in tracks.get('items', []):
             track = item.get('track')
             if track and track.get('name') and track.get('artists'):
@@ -190,6 +196,6 @@ def chatbot_reccomendation(song, autoplayed_songs=[]):
 
 if __name__ == "__main__":
     song_name = "Sustain/Decay Drivealone"
-    # print(spotify_reccomendation("Get Lucky Daft Punk"))
+    print(spotify_reccomendation("Get Lucky Daft Punk"))
     print(song_reccomendations(song_name))
     print(f"Response: {chatbot_reccomendation(song_name)}")
