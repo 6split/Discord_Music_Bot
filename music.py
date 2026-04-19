@@ -13,6 +13,7 @@ from sensitive_data import get_spotify_client_secret, get_spotify_client_id
 from youtube import search_youtube, download_from_url
 from autoplay import song_reccomendations
 from settings.settings import get_all_settings, modify_setting, populate_settings_json
+from youtube import get_related_titles
 
 SPOTIFY_CLIENT_ID = get_spotify_client_id()
 SPOTIFY_CLIENT_SECRET = get_spotify_client_secret()
@@ -178,8 +179,10 @@ def spotify_reccomendation(song, autoplayed_songs=[]):
     return remaining_songs
 
 def chatbot_reccomendation(song, autoplayed_songs=[]):
-    messages = [{'role': 'system', 'content': "You are an advanced AI autoplay system which responds with a singular song_name by artist name when asked for a reccomendation"},]
-    messages.extend([{'role': 'user', 'content': f"Reccomend a song similar to {song}"}])
+    potential_songs = get_related_titles(song, num_results=20)
+    print(f"Potential songs for chatbot reccomendation: {potential_songs}")
+    messages = [{'role': 'system', 'content': "You are an advanced AI autoplay system which responds with a singular song_title when asked for a reccomendation"},]
+    messages.extend([{'role': 'user', 'content': f"Reccomend a song similar to {song}. Here are some potential songs: {potential_songs}. The song must be similar to the input song, but not the same."}])
     most_recent_message = ""
 
     for i in range(10):  # Limit to 10 iterations to avoid infinite loops
@@ -195,10 +198,11 @@ def chatbot_reccomendation(song, autoplayed_songs=[]):
         messages.append(response.message)
         if response.message.thinking:
             continue
+    if len(potential_songs) > 0:
+        return random.choice(potential_songs)
     return None
 
 if __name__ == "__main__":
-    song_name = "Sustain/Decay Drivealone"
-    print(spotify_reccomendation("Get Lucky Daft Punk"))
+    song_name = "Get Lucky Daft Punk"
     print(song_reccomendations(song_name))
     print(f"Response: {chatbot_reccomendation(song_name)}")
