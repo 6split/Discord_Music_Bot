@@ -141,7 +141,10 @@ def run_tests(client : discord.Client, voice_channel : discord.VoiceChannel, mus
     test_results = []
     for test in TESTS_TO_RUN:
         time.sleep(0.1)
-        result = test(client, music_manager)
+        try:
+            result = test(client, music_manager)
+        except Exception as e:
+            result = create_test_return(success=False, message=f"{test.__name__} raised an exception: {str(e)}")
         if debug_func:
             debug_func(result)
         else:

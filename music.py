@@ -87,6 +87,9 @@ class Music_Manager:
             #Set up the next autoplay song
             print("Picking Autoplay song")
             try:
+                #temp disable spotify
+                raise Exception("Spotify reccomendations are currently disabled")
+
                 spotify_song_reccomendations = spotify_reccomendation(self.current_song.name, self.song_history)
                 if len(spotify_song_reccomendations) < 1:
                     raise Exception("No autoplay options")
