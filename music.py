@@ -187,7 +187,7 @@ def chatbot_reccomendation(song, autoplayed_songs=[]):
     potential_songs = get_related_titles(song + " song", num_results=20)
     print(f"Potential songs for chatbot reccomendation: {potential_songs}")
     messages = [{'role': 'system', 'content': "You are an advanced AI autoplay system which responds with a singular song_title when asked for a reccomendation"},]
-    messages.extend([{'role': 'user', 'content': f"Reccomend a song similar to {song}. Here are some potential songs: {potential_songs}. The song must be similar to the input song, but not the same. Here are the songs that have already been played: {autoplayed_songs}."}])
+    messages.extend([{'role': 'user', 'content': f"Reccomend a song similar to {song}. Here are some potential songs: {potential_songs}. The song must be similar to the input song, but not the same. Here are the songs that have already been played: {autoplayed_songs[-5:]}."}])
     most_recent_message = ""
 
     for i in range(10):  # Limit to 10 iterations to avoid infinite loops

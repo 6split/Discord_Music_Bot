@@ -26,5 +26,95 @@
     {
         "role": "assistant",
         "content": "04/19/2026 17:01:30--The song \"Melt Miku\" is now playing! 🎶 Let me know if you'd like to add more songs, pause, skip, or check the queue."
+    },
+    {
+        "role": "user",
+        "content": "04/19/2026 17:06:56--6split: Jarvis play Get Lucky Daft Punk"
+    },
+    {
+        "role": "tool",
+        "tool_name": "request_song_tool",
+        "content": "Requested song: Get Lucky Daft Punk"
+    },
+    {
+        "role": "assistant",
+        "content": "04/19/2026 17:07:07--04/19/2026 17:07:12--Adding \"Get Lucky Daft Punk\" to the queue! 🎵 It will start playing next. Let me know if you want to adjust the playlist or control the music.",
+        "thinking": "Okay, the user asked Jarvis to play \"Get Lucky Daft Punk\". I need to process that request. First, I'll check the available tools. The request_song_tool is designed to take a song name as an argument. Since the user provided both the song title and the artist, I should include that entire phrase as the song_name parameter. There's no need to split them here because the tool likely handles full song names with artists. I'll structure the JSON call accordingly, making sure the arguments are correctly formatted. No other tools are necessary for this request. Let me verify the syntax to avoid any errors. Alright, the tool call should work as intended.\n"
+    },
+    {
+        "role": "assistant",
+        "content": "04/19/2026 17:07:09--04/19/2026 17:07:12--Adding \"Get Lucky Daft Punk\" to the queue! 🎵 It will start playing next. Let me know if you want to adjust the playlist or control the music."
+    },
+    {
+        "role": "user",
+        "content": "04/19/2026 17:09:33--6split: Jarvis add Connect:Commune to the queue"
+    },
+    {
+        "role": "tool",
+        "tool_name": "request_song_tool",
+        "content": "Requested song: Connect:Commune"
+    },
+    {
+        "role": "assistant",
+        "content": "04/19/2026 17:09:42--04/19/2026 17:09:33--Adding \"Connect:Commune\" to the queue! 🎵 It will play next. Let me know if you'd like to adjust the playlist or control the music.",
+        "thinking": "Okay, the user asked to add \"Connect:Commune\" to the queue. I used the request_song_tool with that song name. The response came back as \"Requested song: Connect:Commune\". Now I need to confirm to the user that it's been added. Let me check the previous interactions to see the pattern.\n\nEarlier, when they asked to play \"Melt Miku\" and \"Get Lucky Daft Punk\", I responded with messages confirming the song was added or playing. The user also mentioned the current time in their queries, so maybe they want similar timestamps here. But the assistant's response doesn't include timestamps, just the song info. Wait, looking at the history, the assistant's responses have the timestamp in the first line, then the message. For example:\n\n04/19/2026 17:01:30--The song \"Melt Miku\" is now playing! 🎶...\n\nSo I should follow that format. The user's latest input is \"04/19/2026 17:09:33--6split: Jarvis add Connect:Commune to the queue\", and the tool response is \"Requested song: Connect:Commune\". \n\nI need to create a response that starts with the current time, then confirms the song was added to the queue. The user might be expecting a similar structure to previous confirmations. Also, the user might be using a split command, so maybe they want the song added without any other actions. \n\nI should make sure the response is friendly and offers further assistance, like checking the queue or controlling the music. The previous responses included emojis, so adding one here would be consistent. Let me check if there are any other tools needed, but since the user only asked to add to the queue, no other functions are required. \n\nSo the final response should include the timestamp, confirm the song is added, mention it's next in line, and offer help with playlist adjustments or music control. Keep it concise and friendly.\n"
+    },
+    {
+        "role": "assistant",
+        "content": "04/19/2026 17:09:42--04/19/2026 17:09:33--Adding \"Connect:Commune\" to the queue! 🎵 It will play next. Let me know if you'd like to adjust the playlist or control the music."
+    },
+    {
+        "role": "user",
+        "content": "04/19/2026 17:14:13--6split: Jarvis add Deco*27 Monitoring to the queue"
+    },
+    {
+        "role": "tool",
+        "tool_name": "request_song_tool",
+        "content": "Requested song: Deco*27 Monitoring"
+    },
+    {
+        "role": "assistant",
+        "content": "04/19/2026 17:14:19--04/19/2026 17:14:21--04/19/2026 17:14:13--Adding \"Deco*27 Monitoring\" to the queue! 🎵 It will play next. Let me know if you'd like to adjust the playlist or control the music.",
+        "thinking": "Okay, the user asked to add \"Deco*27 Monitoring\" to the queue. I used the request_song_tool with that song name. The response from the tool was \"Requested song: Deco*27 Monitoring\". Now I need to confirm to the user that it's been added. Let me check the previous interactions to see the pattern. Earlier responses mentioned adding songs to the queue and mentioning they'll play next. So I should follow the same format. Make sure to use the emoji and keep the message friendly. Also, no timestamps, just the confirmation. Alright, ready to respond.\n"
+    },
+    {
+        "role": "assistant",
+        "content": "04/19/2026 17:14:19--04/19/2026 17:14:21--04/19/2026 17:14:13--Adding \"Deco*27 Monitoring\" to the queue! 🎵 It will play next. Let me know if you'd like to adjust the playlist or control the music."
+    },
+    {
+        "role": "user",
+        "content": "04/19/2026 17:16:48--6split: Jarvis can you add Drop Top Candy"
+    },
+    {
+        "role": "tool",
+        "tool_name": "request_song_tool",
+        "content": "Requested song: Drop Top Candy"
+    },
+    {
+        "role": "assistant",
+        "content": "04/19/2026 17:16:54--04/19/2026 17:16:55--04/19/2026 17:16:48--Adding \"Drop Top Candy\" to the queue! 🎵 It will play next. Let me know if you'd like to adjust the playlist or control the music.",
+        "thinking": "Okay, the user asked Jarvis to add \"Drop Top Candy\" to the queue. I need to process that request. Let me check the available tools again. The request_song_tool is the right function here since the user is asking to add a song. The tool takes a song_name as a string. The user's message is straightforward, just adding the song. No need for any other functions like pause or skip. I'll call request_song_tool with \"Drop Top Candy\" as the argument. Make sure the JSON is correctly formatted with the song name in the arguments. No typos in the song title. Alright, that should do it.\n"
+    },
+    {
+        "role": "assistant",
+        "content": "04/19/2026 17:16:55--04/19/2026 17:16:55--04/19/2026 17:16:48--Adding \"Drop Top Candy\" to the queue! 🎵 It will play next. Let me know if you'd like to adjust the playlist or control the music."
+    },
+    {
+        "role": "user",
+        "content": "04/19/2026 17:17:29--6split: Jarvis add M@Gical Cure Love Shot"
+    },
+    {
+        "role": "tool",
+        "tool_name": "request_song_tool",
+        "content": "Requested song: M@Gical Cure Love Shot"
+    },
+    {
+        "role": "assistant",
+        "content": "04/19/2026 17:17:36--04/19/2026 17:17:35--04/19/2026 17:17:36--Adding \"M@Gical Cure Love Shot\" to the queue! 🎵 It will play next. Let me know if you'd like to adjust the playlist or control the music.",
+        "thinking": "Okay, the user asked to add \"M@Gical Cure Love Shot\" to the queue. I called the request_song_tool with that song name. The response from the tool says the song was requested. Now I need to confirm to the user that it's been added. Let me check the previous interactions to see the pattern. Earlier responses mentioned adding songs to the queue and mentioning they'll play next. I should follow that format. Also, the user might want to know if they can adjust the playlist or control the music, so I'll include that offer again. Keep the tone friendly and helpful. Make sure there are no timestamps and the response is concise.\n"
+    },
+    {
+        "role": "assistant",
+        "content": "04/19/2026 17:17:36--04/19/2026 17:17:35--04/19/2026 17:17:36--Adding \"M@Gical Cure Love Shot\" to the queue! 🎵 It will play next. Let me know if you'd like to adjust the playlist or control the music."
     }
 ]
