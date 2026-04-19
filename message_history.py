@@ -1,7 +1,6 @@
 import json
 from datetime import datetime
 
-
 def save_message_history(message_history, file_path='message_history.json'):
     """Saves the message history to a JSON file.
 

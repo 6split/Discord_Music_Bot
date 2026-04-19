@@ -14,6 +14,7 @@ music_manager_instance = None
 request_threads = []
 #Create the discord client
 client = discord.Client(intents=discord.Intents.all(), application_id=get_discord_application_id())
+jarvis_messages = [] #Saves messages that we have to edit with the most recent response from the AI.
 
 @client.event
 async def on_ready():
@@ -131,28 +132,47 @@ async def on_message(message : discord.Message):
     if message.content.lower().__contains__("jarvis"):
         current_message = await message.reply("Processing...")
 
-        #Save the user's message to our message history so that it can be used in the future for context in our conversations with the AI
-        user_message = f"{message.author.name}: {message.content}"
-        message = create_message('user', user_message)
-        save_new_message(message)
+        #Our current message requests
+        jarvis_messages.append(current_message)
+        
 
         debug_queue = []
         def debug(message_to_print):
+            current_thread_count = 0
+            #Trim down jarvis_messages so we have the most up to date message to edit.
+            threads_to_remove = []
+            for thread in request_threads:
+                if not thread.is_alive():
+                    threads_to_remove.append(thread)
+                else:
+                    current_thread_count += 1
+            for thread in threads_to_remove:
+                request_threads.remove(thread)
+
+            while len(jarvis_messages) > current_thread_count:
+                jarvis_messages.pop(0)
+
+            message_to_edit = jarvis_messages[0] if len(jarvis_messages) > 0 else current_message
+            if len(jarvis_messages) == 0:
+                print("There is no jarvis message to edit, using the current message instead.")
+
             for debug_coroutine in debug_queue:
                 while not debug_coroutine.done():
                     time.sleep(0.1)
-            debug_queue.clear()
-            debug_coroutine = asyncio.run_coroutine_threadsafe(current_message.edit(content=message_to_print), client.loop)
+                if debug_coroutine.done():
+                    debug_queue.remove(debug_coroutine)
+
+            debug_coroutine = asyncio.run_coroutine_threadsafe(message_to_edit.edit(content=message_to_print), client.loop)
             debug_queue.append(debug_coroutine)
-        while len(request_threads) > 0:
-            thread = request_threads[0]
-            if not thread.is_alive():
-                request_threads.pop(0)
+
         #Sets up our tools with the music manager and debug function so that they can be used in the chat_with_tools function
         tools.init_tools(music_manager_instance, debug_func=debug)
-        thread = threading.Thread(target=tools.chat_with_tools)
+        #Save the user's message to our message history so that it can be used in the future for context in our conversations with the AI
+        user_message = f"{message.author.name}: {message.content}"
+        thread = threading.Thread(target=tools.chat_with_tools, args=(user_message,), daemon=True)
         thread.start()
         request_threads.append(thread)
+        
     return
 
 #Run the discord client
