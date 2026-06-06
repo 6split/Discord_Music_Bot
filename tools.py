@@ -28,7 +28,7 @@ def request_song_tool(song_name):
         if debug_function is not None:
             debug_function(f"Error requesting song: {e}")
         return f"Error requesting song: {e}"
-    return f"Requested song: {song_name}"
+    return f"Added song to queue: {song_name}"
 
 def retrieve_queue_tool():
     """Tool function to retrieve the current song queue and the currently playing song from the music manager."""
