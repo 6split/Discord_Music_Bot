@@ -35,6 +35,7 @@ async def leave_voice_channel():
     if len(client.voice_clients) > 0 and client.voice_clients[0].is_connected():
         await client.voice_clients[0].disconnect()
     current_voice_channel = None
+    
     music_manager_instance = None
 
 async def set_presence(status : str):

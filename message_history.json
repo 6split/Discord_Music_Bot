@@ -1,20 +1,56 @@
 [
     {
         "role": "user",
-        "content": "04/19/2026 17:20:38--6split: Jarvis can you play Room for a Fantasy Miku"
+        "content": "06/05/2026 01:32:44--6split: Jarvis add Im han solo"
     },
     {
         "role": "tool",
         "tool_name": "request_song_tool",
-        "content": "Requested song: Room for a Fantasy Miku"
+        "content": "Added song to queue: Im han solo"
     },
     {
         "role": "assistant",
-        "content": "04/19/2026 17:20:42--Playing \"Room for a Fantasy Miku\" for you! 🎶",
-        "thinking": "Okay, the user asked to play \"Room for a Fantasy Miku\". I used the request_song_tool with that song name. The response from the tool was \"Requested song: Room for a Fantasy Miku\". Now I need to confirm to the user that the song was requested. I should keep it simple and friendly. Maybe say something like, \"Playing 'Room for a Fantasy Miku' for you!\" to acknowledge the request and confirm the action. No need for extra info unless there's an error, which there wasn't. Just a straightforward confirmation.\n"
+        "content": "06/05/2026 01:33:23--The song \"Im han solo\" has been added to the queue! 🎶 Let me know if you'd like to play it now or adjust the playlist.",
+        "thinking": "Okay, the user asked to add \"Im han solo\" to the music queue. I called the request_song_tool with that song name. The response from the tool says it was added. Now I need to confirm to the user that the song is in the queue. Let me make sure the response is friendly and clear. Maybe mention the song name again and offer further help. Keep it simple and conversational.\n"
     },
     {
         "role": "assistant",
-        "content": "04/19/2026 17:20:42--Playing \"Room for a Fantasy Miku\" for you! 🎶"
+        "content": "06/05/2026 01:33:23--The song \"Im han solo\" has been added to the queue! 🎶 Let me know if you'd like to play it now or adjust the playlist."
+    },
+    {
+        "role": "user",
+        "content": "06/05/2026 01:33:24--6split: Jarvis addwgft"
+    },
+    {
+        "role": "tool",
+        "tool_name": "request_song_tool",
+        "content": "Added song to queue: wgft"
+    },
+    {
+        "role": "assistant",
+        "content": "06/05/2026 01:33:52--The song \"wgft\" has been added to the queue! 🎶 Let me know if you'd like to play it now or make any other adjustments.",
+        "thinking": "Okay, the user asked to add \"wgft\" to the queue. I called the request_song_tool with that name. The response from the tool says it was added. Now I need to inform the user.\n\nI should confirm the addition and maybe check if they want to play it now. Keep the response friendly and offer further assistance. Let me make sure to mention the song name and ask if they need anything else. No need to mention previous interactions unless necessary. Keep it concise and helpful.\n"
+    },
+    {
+        "role": "assistant",
+        "content": "06/05/2026 01:33:52--The song \"wgft\" has been added to the queue! 🎶 Let me know if you'd like to play it now or make any other adjustments."
+    },
+    {
+        "role": "user",
+        "content": "06/05/2026 01:36:56--6split: Jarvis pause"
+    },
+    {
+        "role": "tool",
+        "tool_name": "pause_tool",
+        "content": "Paused song"
+    },
+    {
+        "role": "assistant",
+        "content": "06/05/2026 01:37:19--The song has been paused. 🎵 Let me know if you'd like to resume playback or add more songs to the queue!",
+        "thinking": "Okay, the user asked to pause the music, so I called the pause_tool. The response from the tool was \"Paused song,\" which confirms the action was successful. Now I need to let the user know it's paused. I should keep the response simple and friendly, maybe mention that the song is paused and ask if they want to resume or add more songs. Let me check if there are any other tools needed, but since the user just paused, no other actions are required. Alright, time to craft a concise reply.\n"
+    },
+    {
+        "role": "assistant",
+        "content": "06/05/2026 01:37:19--The song has been paused. 🎵 Let me know if you'd like to resume playback or add more songs to the queue!"
     }
 ]
