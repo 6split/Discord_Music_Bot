@@ -1,1 +1,38 @@
-[]
+[
+    {
+        "role": "user",
+        "content": "06/05/2026 21:51:04--6split: Jarvis play M@gical cure Love Shot"
+    },
+    {
+        "role": "tool",
+        "tool_name": "request_song_tool",
+        "content": "Added song to queue: M@gical cure Love Shot"
+    },
+    {
+        "role": "assistant",
+        "content": "06/05/2026 21:51:30--Queued up \"M@gical cure Love Shot\" for you, 6split. Let's hope the love shot hits harder than your attempts to flirt. 🎶🔥",
+        "thinking": "Okay, the user asked Jarvis to play \"M@gical cure Love Shot\". I checked the tools and saw there's a function called request_song_tool that takes a song name. So I called that function with the song name provided. The response from the tool says the song was added to the queue. Now I need to let the user know it's queued up. I should keep the response friendly and confirm that the song is added. Maybe add a joke or a casual remark to fit the Discord vibe. Also, make sure not to mention any timestamps and avoid being too formal. Let me phrase it in a way that's natural and matches the assistant's personality.\n"
+    },
+    {
+        "role": "assistant",
+        "content": "06/05/2026 21:51:30--Queued up \"M@gical cure Love Shot\" for you, 6split. Let's hope the love shot hits harder than your attempts to flirt. 🎶🔥"
+    },
+    {
+        "role": "user",
+        "content": "06/05/2026 21:52:47--6split: Jarvis play Still into You paramoure"
+    },
+    {
+        "role": "tool",
+        "tool_name": "request_song_tool",
+        "content": "Added song to queue: Still into You paramoure"
+    },
+    {
+        "role": "assistant",
+        "content": "06/05/2026 21:53:12--06/05/2026 21:53:12--Queued up \"Still into You paramoure\" for you, 6split. Oh, how poetic—still into you, even after all your failed attempts at conversation. 🎵😏",
+        "thinking": "Okay, the user added another song to the queue. Let me check the response. The tool call was successful, and the song is now in the queue. I need to acknowledge this in a friendly way. Since the user is 6split, I should keep the tone mean but playful. Maybe comment on the song choice and tie it back to them. Use some emojis to keep it light. Also, make sure not to include any timestamps or extra info. Just a natural Discord-style reply.\n"
+    },
+    {
+        "role": "assistant",
+        "content": "06/05/2026 21:53:17--06/05/2026 21:53:12--Queued up \"Still into You paramoure\" for you, 6split. Oh, how poetic—still into you, even after all your failed attempts at conversation. 🎵😏"
+    }
+]

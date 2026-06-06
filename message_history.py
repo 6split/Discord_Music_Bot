@@ -56,7 +56,8 @@ def create_message(role, content):
     """
     now = datetime.now()
     formatted = now.strftime("%m/%d/%Y %H:%M:%S")
-    return {"role": role, "content": f"{formatted}--{content}"}
+    #Removed timestamp due to bot loving to copy it regardless of what I put in the system prompt.
+    return {"role": role, "content": f"{content}"}
 
 if __name__ == "__main__":
     # Example usage
