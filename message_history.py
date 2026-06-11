@@ -12,7 +12,7 @@ def save_message_history(message_history, file_path='message_history.json'):
         json.dump(message_history, f, ensure_ascii=False, indent=4)
 
 def load_message_history(file_path='message_history.json'):
-    """Loads the message history from a JSON file.
+    """Loads the message history from a JSON file. If the file does not exist, creates an empty list.
 
     Args:
         file_path (str): The path to the file from which the history will be loaded.
@@ -20,6 +20,9 @@ def load_message_history(file_path='message_history.json'):
     Returns:
         list: A list of message dictionaries.
     """
+    import os
+    if not os.path.exists(file_path):
+        save_message_history([], file_path)
     with open(file_path, 'r', encoding='utf-8') as f:
         message_history = json.load(f)
     return message_history
