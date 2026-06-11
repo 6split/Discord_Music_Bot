@@ -117,7 +117,7 @@ async def on_message(message : discord.Message):
                         tests_passed += 1
                 asyncio.run_coroutine_threadsafe(message.reply(result), client.loop)
             await join_voice_channel(voice_channel)
-            run_tests(client, voice_channel, music_manager_instance, debug_func=debug_print)
+            await asyncio.to_thread(run_tests, client, voice_channel, music_manager_instance, debug_func=debug_print)
             await leave_voice_channel()
             await asyncio.sleep(0.05)  # Wait for all test results to be sent before sending the final message
             await message.reply(f"Finished running tests. {tests_passed}/{total_tests} tests passed.")
