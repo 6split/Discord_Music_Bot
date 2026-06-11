@@ -121,6 +121,15 @@ def chat_with_tools(user_message=None):
         "skip_song_tool": skip_song_tool,
         "retrieve_queue_tool": retrieve_queue_tool,
     }
+
+    tool_status_messages = {
+        "request_song_tool": "Queueing song...",
+        "pause_tool": "Pausing music...",
+        "resume_tool": "Resuming music...",
+        "skip_song_tool": "Skipping song...",
+        "retrieve_queue_tool": "Retrieving queue...",
+    }
+
     messages = reload_message_history()
     most_recent_message = ""
 
@@ -145,6 +154,8 @@ def chat_with_tools(user_message=None):
                     result = available_functions[tc.function.name](**tc.function.arguments)
                     print(f"Result: {result}")
                     # add the tool result to the messages
+                    if debug_function is not None:
+                        debug_function(f"{tool_status_messages.get(tc.function.name, 'Using tool...')}")
                     messages.append({'role': 'tool', 'tool_name': tc.function.name, 'content': str(result)})
                     save_new_message({'role': 'tool', 'tool_name': tc.function.name, 'content': str(result)})
         else:
