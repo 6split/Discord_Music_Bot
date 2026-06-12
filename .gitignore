@@ -6,3 +6,4 @@ music/
 __pycache__
 venv
 .env
+*.json

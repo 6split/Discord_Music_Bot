@@ -27,26 +27,6 @@ def load_message_history(file_path='message_history.json'):
         message_history = json.load(f)
     return message_history
 
-def clear_message_history(file_path='message_history.json'):
-    """Clears the message history by saving an empty list to the JSON file.
-
-    Args:
-        file_path (str): The path to the file where the history will be cleared.
-    """
-    save_message_history([], file_path)
-
-def save_new_message(message, file_path='message_history.json'):
-    """Appends a new message to the message history JSON file.
-
-    Args:
-        message (dict): A dictionary representing the new message.
-        file_path (str): The path to the file where the history is saved.
-    """
-    message_history = load_message_history(file_path)
-    assert isinstance(message_history, list), "Expected message_history to be a list."
-    message_history.append(message)
-    save_message_history(message_history, file_path)
-
 def create_message(role, content):
     """Creates a message dictionary.
 
@@ -62,16 +42,69 @@ def create_message(role, content):
     #Removed timestamp due to bot loving to copy it regardless of what I put in the system prompt.
     return {"role": role, "content": f"{content}"}
 
+def compress_message_history(file_path='message_history.json', model='qwen3:8b'):
+    """Compresses the message history using an Ollama model.
+
+    Args:
+        file_path (str): The path to the JSON file containing the history.
+        model (str): The name of the Ollama model to use for compression.
+    """
+    import ollama
+    history = load_message_history(file_path)
+    if not history:
+        return
+
+    # Construct a prompt context
+    content_block = "".join([f"{m['role']}: {m['content']}\n" for m in history])
+    prompt = f"The following is a long conversation history. Summarize it concisely while preserving all key facts and user intent, but output the result as a structured list of messages (e.g., \"user\" or \"assistant\"). Use only the necessary information.\n\n{content_block}"
+
+    response = ollama.generate(model=model, prompt=prompt)
+    # In some cases, the model might return extra text; we'd ideally parse it
+    # but for now we take the result as the new history representation.
+    # Since compression is a structural rewrite of logs, we save this back.
+    new_history = []
+    # This logic assumes the LLM output can be mapped or simply saved as one summary message
+    new_history.append({"role": "assistant", "content": response['response']})
+
+    save_message_history(new_history, file_path)
+
+def clear_message_history(file_path='message_history.json'):
+    """Clears the message history by saving an empty list to the JSON file.
+
+    Args:
+        file_path (str): The path to the file where the history will be cleared.
+    """
+    save_message_history([], file_path)
+
+def save_new_message(message, file_path='message_history.json'):
+    """Appends a new message to the message history JSON file.
+
+    Args:
+        message (dict): A dictionary representing the new message.
+        file_path (str): The path to the file where the history is saved.
+    """
+
+    message_history = load_message_history(file_path)
+    if message['role'] == 'user': #If it's a user message we can compress the history before the message is added.
+        if len(message_history) > 15:
+            print("Compressing message history...")
+            compress_message_history(file_path, model='qwen3:8b')
+            message_history = load_message_history(file_path) #Reload the history
+    assert isinstance(message_history, list), "Expected message_history to be a list."
+    message_history.append(message)
+    save_message_history(message_history, file_path)
+
 if __name__ == "__main__":
     # Example usage
-    history = [
-        create_message("user", "Hello!"),
-        create_message("assistant", "Hi there! How can I help you?")
-    ]
-    save_message_history(history, 'message_history.json')
+    # history = [
+    #     create_message("user", "Hello!"),
+    #     create_message("assistant", "Hi there! How can I help you?")
+    # ]
+    # save_message_history(history, 'message_history.json')
 
-    new_message = create_message("user", "Can you tell me a joke?")
-    save_new_message(new_message)
+    # new_message = create_message("user", "Can you tell me a joke?")
+    # save_new_message(new_message)
 
-    loaded_history = load_message_history('message_history.json')
-    print(loaded_history)
+    # loaded_history = load_message_history('message_history.json')
+    # print(loaded_history)
+    compress_message_history('message_history.json', model='qwen3:8b')

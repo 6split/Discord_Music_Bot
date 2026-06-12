@@ -1,266 +1,390 @@
 """
-Pretty bad code, beacause I copied from an old project. Should work for the meantime though.
+Web search and scraping module using crawl4ai.
 """
-from crawl4ai import AsyncWebCrawler, AdaptiveCrawler, AdaptiveConfig
-import os
-import asyncio
-import json
-from pydantic import BaseModel, Field
-from typing import List
-from crawl4ai import BrowserConfig, CrawlerRunConfig, CacheMode, LLMConfig
-from crawl4ai import LLMExtractionStrategy
+from typing import List, Optional, Callable
 import time
+import json
+import asyncio
+
+from pydantic import BaseModel, Field
+from crawl4ai import (
+    AsyncWebCrawler, AdaptiveCrawler, AdaptiveConfig,
+    BrowserConfig, CrawlerRunConfig, CacheMode, LLMConfig,
+    LLMExtractionStrategy
+)
+
 from message_history import save_message_history
 
-def AI_websearch(query : str):
-    result = asyncio.run(crawl_for_info(f"https://www.google.com/search?q={query}", query, True))
-    return result
+
+# ==================== Configuration Constants ====================
+class Config:
+    """Centralized configuration constants."""
+    MAX_ITERATIONS = 20
+    DEFAULT_LLM_PROVIDER = "ollama/qwen3:8b"
+    EMBEDDING_LLM_PROVIDER = "ollama/qwen3-embedding:4b"
+    CHUNK_TOKEN_THRESHOLD = 2048
+    CHUNK_OVERLAP_RATE = 0.01
+    EXTRA_ARGS = {"temperature": 0.0, "max_tokens": 5000}
+    MIN_CONTENT_LENGTH = 100
+    MIN_ITERATIONS_FOR_TIMEOUT = 3
+    ADAPTIVE_CONFIDENCE_THRESHOLD = 0.8
+    ADAPTIVE_MAX_DEPTH = 3
+    ADAPTIVE_BASE_MAX_PAGES = 10
+    ADAPTIVE_BASE_TOP_K_LINKS = 3
+    ADAPTIVE_MIN_GAIN_THRESHOLD = 0.01
+    RELEVANCE_SCORE_THRESHOLD = 0.8
+    RELEVANCE_SCORE_DECAY = 0.06
+    PAGE_URL_COUNT_THRESHOLD = 10
+    RESULT_LENGTH_THRESHOLD = 100
+    RESULTS_TO_KEEP = 3
 
 
+# ==================== Type Hints ====================
+CallbackType = Optional[Callable[[str], None]]
 
-async def google_search(query: str):
+
+# ==================== Models ====================
+class Info(BaseModel):
+    """Information extracted from a web page."""
+    summary: str
+    relevant: bool
+
+
+class Article(BaseModel):
+    """An article or search result item."""
+    title: str
+    link: str
+
+
+class SearchResults(BaseModel):
+    """Container for search results."""
+    articles: List[Article]
+
+
+# ==================== Helper Functions ====================
+def _get_adaptive_config(iteration: int, state_path: str = "crawl.json") -> AdaptiveConfig:
+    """Create an AdaptiveCrawler configuration for the given iteration."""
+    return AdaptiveConfig(
+        confidence_threshold=Config.ADAPTIVE_CONFIDENCE_THRESHOLD,
+        max_depth=Config.ADAPTIVE_MAX_DEPTH,
+        max_pages=Config.ADAPTIVE_BASE_MAX_PAGES + iteration * 100,
+        top_k_links=Config.ADAPTIVE_BASE_TOP_K_LINKS + iteration * 20,
+        min_gain_threshold=Config.ADAPTIVE_MIN_GAIN_THRESHOLD,
+        save_state=True,
+        state_path=state_path,
+    )
+
+
+def _get_llm_extraction_strategy(
+    prompt: str,
+    schema: dict,
+    provider: str = Config.DEFAULT_LLM_PROVIDER,
+    chunk_token_threshold: int = Config.CHUNK_TOKEN_THRESHOLD,
+    overlap_rate: float = Config.CHUNK_OVERLAP_RATE,
+    extra_args: Optional[dict] = None,
+    verbose: bool = True,
+) -> LLMExtractionStrategy:
+    """Create an LLM extraction strategy with the given parameters."""
+    final_extra_args = {**Config.EXTRA_ARGS, **(extra_args or {})}
+    return LLMExtractionStrategy(
+        llm_config=LLMConfig(provider=provider),
+        schema=schema,
+        extraction_type="schema",
+        instruction=prompt,
+        chunk_token_threshold=chunk_token_threshold,
+        overlap_rate=overlap_rate,
+        apply_chunking=True,
+        input_format="markdown",
+        extra_args=final_extra_args,
+        verbose=verbose,
+    )
+
+
+def _get_search_extraction_strategy() -> LLMExtractionStrategy:
+    """Create a search results extraction strategy for Google."""
+    return LLMExtractionStrategy(
+        llm_config=LLMConfig(provider=Config.DEFAULT_LLM_PROVIDER),
+        schema=SearchResults.model_json_schema(),
+        extraction_type="schema",
+        instruction="""Extract the search results from the page.
+
+Return:
+{
+    "articles": [
+        {
+            "title": "...",
+            "link": "..."
+        }
+    ]
+}
+
+Only include actual search results.
+CRITICAL RULES:
+    - You MUST ONLY use URLs that are explicitly present in the page content.
+    - NEVER fabricate, guess, or complete URLs.
+    - If a URL is relative (e.g. /url?q=...), extract the full value from it.
+    - If no valid URL exists for an item, DO NOT include it.
+Ignore ads, navigation links, related searches, images, and page controls.
+
+Return valid JSON only.
+""",
+        input_format="html",
+        apply_chunking=True,
+        chunk_token_threshold=Config.CHUNK_TOKEN_THRESHOLD,
+        overlap_rate=Config.CHUNK_OVERLAP_RATE,
+        verbose=True,
+    )
+
+
+# ==================== Core Functions ====================
+async def google_search(query: str) -> dict:
+    """
+    Perform a Google search using crawl4ai.
+
+    Args:
+        query: The search query string
+
+    Returns:
+        dict: Extracted search results
+    """
     query = query.replace(" ", "+")
     url = f"https://www.google.com/search?q={query}"
 
     browser_cfg = BrowserConfig(headless=False)
 
-    extraction_strategy = LLMExtractionStrategy(
-        llm_config=LLMConfig(provider="ollama/qwen3:0.6b"),
-        schema=SearchResults.model_json_schema(),
-        extraction_type="schema",
-        instruction="""
-        Extract the search results from the page.
-
-        Return:
-        {
-            "results": [
-                {
-                    "title": "...",
-                    "link": "..."
-                }
-            ]
-        }
-
-        Only include actual search results.
-        CRITICAL RULES:
-            - You MUST ONLY use URLs that are explicitly present in the page content.
-            - NEVER fabricate, guess, or complete URLs.
-            - If a URL is relative (e.g. /url?q=...), extract the full value from it.
-            - If no valid URL exists for an item, DO NOT include it.
-        Ignore ads, navigation links, related searches, images, and page controls.
-
-        Return valid JSON only.
-        """,
-        input_format="html",
-        apply_chunking=True,
-        chunk_token_threshold=2048,
-        verbose=True,
-    )
+    extraction_strategy = _get_search_extraction_strategy()
 
     config = CrawlerRunConfig(
         extraction_strategy=extraction_strategy,
-        stream=True
+        stream=True,
     )
 
     async with AsyncWebCrawler(config=browser_cfg) as crawler:
         results = []
-        async for result in await crawler.arun(url=url,config=config):
+        async for result in await crawler.arun(url=url, config=config):
             results.append(result)
 
-        return result.extracted_content
+    return results[0].extracted_content if results else {}
 
 
-def search_google(query: str):
+def search_google(query: str) -> dict:
+    """Synchronous wrapper around google_search."""
     return asyncio.run(google_search(query))
 
-class Info(BaseModel):
-    summary: str
-    relevant: bool
 
-class Article(BaseModel):
-    title: str
-    link: str
+def AI_websearch(query: str) -> dict:
+    """
+    Wrapper that runs the async google_search function.
 
-class SearchResults(BaseModel):
-    articles: List[Article]
+    Args:
+        query: The search query string
 
-async def crawl_for_info(website : str, query : str, need_more_links=False, call_back=None, estimated_time_left=0):
-    MAX_ITERATIONS = 20
+    Returns:
+        dict: Extracted search results
+    """
+    return asyncio.run(google_search(query))
+
+
+async def crawl_for_info(
+    website: str,
+    query: str,
+    need_more_links: bool = False,
+    callback: Optional[CallbackType] = None,
+    estimated_time_left: float = 0.0,
+) -> list:
+    """
+    Crawl a website to extract relevant information using adaptive crawling.
+
+    Args:
+        website: Starting URL for the crawl
+        query: Search query to use during adaptive crawling
+        need_more_links: If True, continues crawling until more links are found
+        callback: Optional callback function called with status updates
+        estimated_time_left: Estimated time remaining in seconds
+
+    Returns:
+        list: List of extracted content strings
+    """
     start_time = time.time()
-    if not need_more_links:
-        page_urls = [website]
-        save_message_history("{}","crawl.json")
-    else:
-        page_urls = []
     iterations = 0
-    searched_page_urls = []
-    async with AsyncWebCrawler() as crawler:
-        potential_links = []
-        while need_more_links and iterations < MAX_ITERATIONS:
-            max_pages = 10 + iterations * 100
-            top_k_links = 3 + iterations * 20
-            print(f"Finding more links: iteration {iterations}, max pages {max_pages}, top k links {top_k_links}")
-        # if call_back:
-        #     call_back(f"Scraping {website} for more information...")
-            # Create an adaptive crawler (config is optional)
-        
-            config = AdaptiveConfig(
-                confidence_threshold=0.8,    # Stop when 80% confident (default: 0.7)
-                max_depth=3,
-                max_pages=10 + iterations * 100,               # Maximum pages to crawl (default: 20)
-                top_k_links=3 + iterations * 20,              # Links to follow per page (default: 3)
-                min_gain_threshold=0.01,     # Minimum expected gain to continue (default: 0.1)
-                save_state=True,
-                state_path="crawl.json",
+    potential_links = []
+    page_urls: List[str] = []
+
+    # Adaptive crawling loop
+    while need_more_links and iterations < Config.MAX_ITERATIONS:
+        max_pages = Config.ADAPTIVE_BASE_MAX_PAGES + iterations * 100
+        top_k_links = Config.ADAPTIVE_BASE_TOP_K_LINKS + iterations * 20
+
+        # Create adaptive config
+        config = _get_adaptive_config(iterations)
+
+        iterations += 1
+        adaptive = AdaptiveCrawler(None, config)
+
+        # Determine whether to resume or start fresh
+        if iterations > 1:
+            result = await adaptive.digest(
+                start_url=potential_links[0].href if potential_links else website,
+                query=query,
+                resume_from="crawl.json",
             )
-            
-            config = AdaptiveConfig(
-                strategy="embedding",
-                # Embedding model — used for text-to-vector calls
-                embedding_llm_config=LLMConfig(
-                    provider='ollama/qwen3-embedding:4b',
-                ),
-                # Query model — used for chat completion (query expansion)
-                query_llm_config = LLMConfig(provider="ollama/qwen3:8b"),
-                embedding_min_confidence_threshold=0.1,
+        else:
+            result = await adaptive.digest(
+                start_url=website,
+                query=query,
             )
 
-            iterations += 1
-            adaptive = AdaptiveCrawler(crawler, config)
+        # Print statistics
+        adaptive.print_stats()
+        potential_links = adaptive.state.pending_links
+        print(f"{len(potential_links)} potential links found")
 
-            # Start crawling with a query
-            if iterations > 1:
-                result = await adaptive.digest(
-                    start_url=potential_links[0].href,
-                    query=query,
-                    resume_from="crawl.json"
-                )
-            else:
-                result = await adaptive.digest(
-                    start_url=website,
-                    query=query,
-                )
-            # View statistics
-            adaptive.print_stats()
-            potential_links = adaptive.state.pending_links
-            print(f"{len(potential_links)} num of potential links")
+        # Get relevant content from knowledge base
+        page_urls = []
+        adaptive.export_knowledge_base("currentwebsearch.json")
+        relevant_pages = adaptive.get_relevant_content(top_k=50)
 
-            # Get the most relevant content
-            page_urls = []
-            adaptive.export_knowledge_base("currentwebsearch.json")
-            relevant_pages = adaptive.get_relevant_content(top_k=50)
-            for page in relevant_pages:
-                threshold = 0.8 - (0.6/MAX_ITERATIONS * iterations)
-                if page['score'] > threshold:
-                    print(f"- {page['url']} (score: {page['score']:.2f})")
-                    page_urls.append(page['url'])
-            
-            link_count = len(page_urls)
-            if link_count >= 10:
-                need_more_links = False
-                break
+        threshold = Config.RELEVANCE_SCORE_THRESHOLD - (Config.RELEVANCE_SCORE_DECAY * iterations)
 
-    data_list = []
+        for page in relevant_pages:
+            if page["score"] > threshold:
+                print(f"- {page['url']} (score: {page['score']:.2f})")
+                page_urls.append(page["url"])
+
+        link_count = len(page_urls)
+        if link_count >= Config.PAGE_URL_COUNT_THRESHOLD:
+            need_more_links = False
+            break
+
+    # Extract information from collected pages
+    data_list: list[str] = []
     count = 0
+
     for page_url in page_urls:
-            searched_page_urls.append(page_url)
-            count += 1
-            if call_back:
-                if estimated_time_left > 1:
-                    call_back(f"Looking at Website: {page_url}. Source: {website}. Website scrape progress: {(count)}/{len(page_urls)} Estimated Time Left: {estimated_time_left}")
-                else:
-                    call_back(f"Looking at Website: {page_url}. Source: {website}. Website scrape progress: {(count)}/{len(page_urls)}")
-            
-            prompt = f"You are given a website as part of a larger web scraping taskforce to find relevant information for an end user. Here is the query to answer: \"{query}\". The summary field should include: All important details. Summary should exclude: Titles, Navigation elements, Sidebars, Footer content. If there is not content related to the query, set the value of the relevant field to False"
-            extraction_schema = Info.model_json_schema()
-            browser_cfg = BrowserConfig(headless=False)
-            llm_strategy = LLMExtractionStrategy(
-                llm_config = LLMConfig(provider="ollama/qwen3:8b"),
-                schema=extraction_schema,
-                extraction_type="schema",
-                instruction= prompt,
-                chunk_token_threshold= 2000,
-                overlap_rate=0.01,
-                apply_chunking=True,
-                input_format="markdown",   # or "html", "fit_markdown"
-                extra_args={"temperature": 0.0, "max_tokens": 5000},
-                verbose=True
-            )
-            # 2. Build the crawler config
-            crawl_config = CrawlerRunConfig(
-                extraction_strategy=llm_strategy,
-                cache_mode=CacheMode.BYPASS,
-                fetch_ssl_certificate=True,
-                wait_for_images=True,
-                # wait_for="networkidle",
-            )
-            async with AsyncWebCrawler(config=browser_cfg) as crawler1:
-                # 4. Let's say we want to crawl a single page
-                result = await crawler1.arun(
-                    url=page_url,
-                    config=crawl_config
-                )
+        count += 1
 
-                if result.success:
-                    # 5. The extracted content is presumably JSON
-                    data = json.loads(result.extracted_content)
-                    print("Extracted items:", data)
+        # Callback with progress update
+        if callback:
+            status = f"Website scrape progress: {count}/{len(page_urls)}"
+            if estimated_time_left > 1:
+                status += f" Estimated Time Left: {estimated_time_left}"
+            callback(f"Looking at Website: {page_url}. Source: {website}. {status}")
 
-                    # 6. Show usage stats
-                    llm_strategy.show_usage()  # prints token usage
-                    for d in data:
-                            try:
-                                relevant = False
-                                try:
-                                    relevant = d['relevant']
-                                except:
-                                    relevant = d['relevannt']
-                                if relevant:
-                                    d = d['summary']
-                                    if d.strip() != query:
-                                        data_list.append(d)
-                            except Exception as e:
-                                print(f"Error with json format? {e}")
-                    #Removes duplicates using a set
-                    data_list = set(data_list)
-                    data_list = list(data_list)
+        # Create extraction strategy for this page
+        prompt = f"""You are given a website as part of a larger web scraping taskforce to find relevant information.
+Query: "{query}"
 
-                    result_len = 0
-                    for string in data_list:
-                        result_len += len(string)
-                    if result_len > 100 and count > 3:
-                        break
-                else:
-                    print("Error:", result.error_message)
+The summary field should include all important details.
+Exclude titles, navigation elements, sidebars, and footer content.
+If the page has no content related to the query, set relevant to False.
+"""
+        schema = Info.model_json_schema()
+        llm_strategy = _get_llm_extraction_strategy(
+            prompt=prompt,
+            schema=schema,
+        )
 
-    print(f"Extracted Data: {data_list}")
-    print(f"Time for web crawling/scriping was {time.time() - start_time: 0.2f} seconds")
+        # Crawl configuration
+        crawl_config = CrawlerRunConfig(
+            extraction_strategy=llm_strategy,
+            cache_mode=CacheMode.BYPASS,
+            fetch_ssl_certificate=True,
+            wait_for_images=True,
+        )
+
+        async with AsyncWebCrawler(config=BrowserConfig(headless=False)) as crawler:
+            result = await crawler.arun(url=page_url, config=crawl_config)
+
+            if result.success:
+                data = json.loads(result.extracted_content)
+
+                # Filter for relevant content
+                for item in data:
+                    try:
+                        # Handle both 'relevant' and 'relevannt' keys
+                        relevant = item.get("relevant", False)
+                        if not isinstance(relevant, bool):
+                            relevant = item.get("relevannt", False)
+
+                        if relevant:
+                            summary = item.get("summary", "")
+                            if summary.strip() != query:
+                                data_list.append(summary)
+                    except Exception:
+                        continue
+
+                # Deduplicate and convert back to list
+                data_list = list(set(data_list))
+
+                # Check if we have enough content
+                result_len = sum(len(s) for s in data_list)
+                if result_len > Config.RESULT_LENGTH_THRESHOLD and count >= 3:
+                    break
+            else:
+                print(f"Error crawling {page_url}: {result.error_message}")
+
+    elapsed = time.time() - start_time
+    print(f"Extracted {len(data_list)} items in {elapsed:.2f} seconds")
     return data_list
 
-def scrape_url(website : str, query: str, callback=None, need_more_links=False, estimated_time=0):
-    """
-    Docstring for scrape_url
-    
-    :param website: Description
-    :type website: str
-    :param query: Description
-    :type query: str
-    :param callback: Description
-    :param need_more_links: Bool for if we need more links. Should always be false.
-    :param estimated_time: Description
-    """
-    a = asyncio.run(crawl_for_info(website, query, call_back=callback, need_more_links=need_more_links, estimated_time_left=estimated_time))
-    result_len = 0
-    for d in a:
-        result_len += len(d)
-    print(f"Scrape result: {a}")
-    if result_len < 100: #if we didn't get info from the actual site, try some other links
-        a = asyncio.run(crawl_for_info(website, query, True, call_back=callback, estimated_time_left=estimated_time))
-    return a
 
+def scrape_url(
+    website: str,
+    query: str,
+    callback: Optional[CallbackType] = None,
+    need_more_links: bool = False,
+    estimated_time: float = 0.0,
+) -> list:
+    """
+    Scrape a URL with automatic fallback if the first attempt yields no results.
+
+    Args:
+        website: Starting URL to scrape
+        query: Search query to use
+        callback: Optional callback function for progress updates
+        need_more_links: If True, continue crawling until more links are found
+        estimated_time: Estimated time remaining in seconds
+
+    Returns:
+        list: Extracted content strings
+
+    Note:
+        If the initial scrape returns less than 100 characters total,
+        it automatically retries with additional link discovery.
+    """
+    result = asyncio.run(
+        crawl_for_info(
+            website=website,
+            query=query,
+            callback=callback,
+            need_more_links=need_more_links,
+            estimated_time_left=estimated_time,
+        )
+    )
+
+    # Check if we got meaningful results
+    result_len = sum(len(d) for d in result)
+    print(f"Scrape result length: {result_len} characters")
+
+    if result_len < Config.MIN_CONTENT_LENGTH:
+        print("Initial scrape yielded minimal content, retrying with link discovery...")
+        result = asyncio.run(
+            crawl_for_info(
+                website=website,
+                query=query,
+                callback=callback,
+                need_more_links=True,
+                estimated_time_left=estimated_time,
+            )
+        )
+
+    return result
+
+
+# ==================== Main Entry Point ====================
 if __name__ == "__main__":
-    url = "https://www.nytimes.com"
-    prompt = "Current events Television"
-    a = scrape_url(url, prompt)
-    print("Finished_scrape")
-    # print(search_google("Minecraft Update"))
+    # url = "https://www.nytimes.com"
+    # prompt = "Current events Television"
+    # a = scrape_url(url, prompt)
+    # print("Finished scraping")
+    search_google("Current events Television")
