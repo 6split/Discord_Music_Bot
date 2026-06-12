@@ -6,4 +6,5 @@ music/
 __pycache__
 venv
 .env
-*.json
+crawl.json
+currentwebsearch.json
