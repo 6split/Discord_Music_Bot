@@ -5,6 +5,8 @@ from typing import List, Optional, Callable
 import time
 import json
 import asyncio
+import re
+from urllib.parse import urlparse, parse_qs
 
 from pydantic import BaseModel, Field
 from crawl4ai import (
@@ -14,6 +16,26 @@ from crawl4ai import (
 )
 
 from message_history import save_message_history
+
+try:
+    import requests
+except ImportError:
+    requests = None
+
+try:
+    from selenium import webdriver
+    from selenium.webdriver.chrome.options import Options
+    from selenium.webdriver.chrome.service import Service
+    from selenium.webdriver.common.by import By
+    from selenium.webdriver.support.ui import WebDriverWait
+    from selenium.webdriver.support import expected_conditions as EC
+    from webdriver_manager.chrome import ChromeDriverManager
+except ImportError:
+    webdriver = None
+    Options = None
+    Service = None
+    WebDriverWait = None
+    EC = None
 
 
 # ==================== Configuration Constants ====================
@@ -137,39 +159,231 @@ Return valid JSON only.
 
 
 # ==================== Core Functions ====================
-async def google_search(query: str) -> dict:
+def _find_google_url(html: str) -> Optional[str]:
+    """Extract the actual Google search results page URL from the HTML."""
+    # Look for base action that sets the search results path
+    # Google uses something like: <form action="/search" method="GET">
+    # and the results are at /search?q=...
+    match = re.search(r'action=["\'](/search)["\']', html)
+    if match:
+        return "https://www.google.com" + match.group(1)
+    return None
+
+
+def _parse_google_search_results(html: str) -> List[dict]:
     """
-    Perform a Google search using crawl4ai.
+    Parse Google search results from HTML using BeautifulSoup.
+
+    Google uses div with class 'kb0PBd' as result containers, grouped under a
+    parent div with 'N54PNb BToiNc' classes. The title is in an h3 tag inside
+    the parent div, before the kb0PBd container.
+
+    Returns a list of dicts with 'title', 'link', and 'description' keys.
+    """
+    import re
+
+    results = []
+
+    try:
+        from bs4 import BeautifulSoup
+        soup = BeautifulSoup(html, "html.parser")
+    except ImportError:
+        return results
+
+    # Strategy: Find all divs with class 'kb0PBd' (Google result containers)
+    # Each group of kb0PBd containers is wrapped in a parent div with N54PNb BToiNc
+    # The title is in an h3 tag within the parent div, before each kb0PBd container
+    kb0pbd_containers = soup.find_all("div", class_="kb0PBd")
+
+    print(f"DEBUG: Found {len(kb0pbd_containers)} kb0PBd result containers")
+
+    # Group kb0PBd containers by their parent div (N54PNb BToiNc)
+    # Each parent div contains one title (h3) and multiple kb0PBd containers
+    kb0pbd_by_parent = {}
+    for container in kb0pbd_containers:
+        parent = container.parent
+        if parent:
+            # Convert class list to tuple for hashing (BeautifulSoup returns a list-like object)
+            parent_key = (parent.name, tuple(parent.get('class', [])))
+            if parent_key not in kb0pbd_by_parent:
+                kb0pbd_by_parent[parent_key] = {
+                    'title': '',
+                    'containers': [],
+                    'link_prefix': ''
+                }
+            kb0pbd_by_parent[parent_key]['containers'].append(container)
+
+    print(f"DEBUG: Found {len(kb0pbd_by_parent)} groups of kb0PBd containers")
+
+    for parent_key, data in kb0pbd_by_parent.items():
+        parent = soup.select_one(f'[{parent_key[0]}][class*="{parent_key[1][0]}"]')
+        if not parent:
+            continue
+
+        # Get the title from h3 inside the parent div
+        title_tag = parent.find("h3")
+        title = title_tag.get_text(strip=True) if title_tag else ""
+        data['title'] = title
+
+        # Clean up title - remove excessive whitespace and normalize
+        title = " ".join(title.split())
+
+        # Process each kb0PBd container in this group
+        for container in data['containers']:
+            # Find the anchor tag inside this container
+            anchors = container.find_all("a", href=True)
+            if not anchors:
+                continue
+
+            anchor = anchors[0]  # Take the first anchor (should be the result link)
+            link = anchor["href"]
+
+            # Skip Google's own pages (internal navigation)
+            parsed_url = urlparse(link)
+            if "google.com" in parsed_url.netloc or not parsed_url.path:
+                continue
+
+            # Clean up description - remove excessive whitespace
+            description = " ".join(description.split())
+
+            if title and len(title) > 2:
+                results.append({
+                    "title": title,
+                    "link": link,
+                    "description": description
+                })
+
+    print(f"DEBUG: Parsed {len(results)} results")
+    return results
+
+
+def _get_google_search_results(query: str, max_results: int = 10) -> List[dict]:
+    """
+    Get Google search results using selenium to fully render the page.
+
+    Args:
+        query: The search query string
+        max_results: Maximum number of results to extract
+
+    Returns:
+        List of dicts with 'title', 'link', and 'description' keys
+    """
+    if webdriver is None:
+        raise ImportError(
+            "selenium is not installed. Install it with: pip install selenium webdriver-manager"
+        )
+
+    try:
+        from bs4 import BeautifulSoup
+    except ImportError:
+        raise ImportError("BeautifulSoup is required but not installed.")
+
+    query = query.replace(" ", "+")
+    url = f"https://www.google.com/search?q={query}"
+
+    chrome_options = Options()
+    chrome_options.add_argument("--no-sandbox")
+    chrome_options.add_argument("--disable-dev-shm-usage")
+    chrome_options.add_argument("--headless")
+    chrome_options.add_argument("--disable-blink-features=AutomationControlled")
+    chrome_options.add_argument("--user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36")
+
+    service = Service(ChromeDriverManager().install())
+    driver = webdriver.Chrome(service=service, options=chrome_options)
+
+    try:
+        # Navigate to Google and trigger the search
+        driver.get(url)
+
+        # Wait for the CAPTCHA page to appear (it should redirect quickly)
+        wait = WebDriverWait(driver, 15)
+
+        # Wait for search results to load - look for result items
+        try:
+            wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, 'div[jsname="L8p2Hb"] a[href]')))
+        except Exception:
+            pass
+
+        html = driver.page_source
+
+        # Debug: Check what we found
+        soup = BeautifulSoup(html, "html.parser")
+        h3_tags = soup.find_all("h3")
+        anchor_tags = soup.find_all("a", href=True)
+        print(f"DEBUG: Found {len(h3_tags)} h3 tags and {len(anchor_tags)} anchor tags")
+
+        if len(h3_tags) > 0:
+            print(f"DEBUG: First h3 tag text: {repr(str(h3_tags[0]))[:200]}")
+
+        results = _parse_google_search_results(html)
+
+        # Sort by relevance (Google puts most relevant at top)
+        return sorted(results, key=lambda x: x.get("title", "").lower())[:max_results]
+
+    finally:
+        driver.quit()
+
+
+def google_search(query: str) -> dict:
+    """
+    Perform a Google search using crawl4ai or selenium (fallback).
 
     Args:
         query: The search query string
 
     Returns:
-        dict: Extracted search results
+        dict: Extracted search results with 'articles' key containing list of dicts
+             with 'title', 'link', and 'description' keys
     """
-    query = query.replace(" ", "+")
-    url = f"https://www.google.com/search?q={query}"
+    # Try selenium first (new implementation)
+    try:
+        results = _get_google_search_results(query)
+        return {"articles": results}
+    except Exception as e:
+        print(f"Selenium search failed: {e}")
+        # Fallback to crawl4ai
+        try:
+            query = query.replace(" ", "+")
+            url = f"https://www.google.com/search?q={query}"
 
-    browser_cfg = BrowserConfig(headless=False)
+            browser_cfg = BrowserConfig(headless=False)
 
-    extraction_strategy = _get_search_extraction_strategy()
+            extraction_strategy = _get_search_extraction_strategy()
 
-    config = CrawlerRunConfig(
-        extraction_strategy=extraction_strategy,
-        stream=True,
-    )
+            config = CrawlerRunConfig(
+                extraction_strategy=extraction_strategy,
+                stream=True,
+            )
 
-    async with AsyncWebCrawler(config=browser_cfg) as crawler:
-        results = []
-        async for result in await crawler.arun(url=url, config=config):
-            results.append(result)
+            async def crawl4ai_fallback():
+                async with AsyncWebCrawler(config=browser_cfg) as crawler:
+                    results = []
+                    async for result in await crawler.arun(url=url, config=config):
+                        results.append(result)
+                return results[0].extracted_content if results else {"articles": []}
 
-    return results[0].extracted_content if results else {}
+            import asyncio
+            # Reduce timeout significantly for fallback to avoid hanging
+            original_timeout = asyncio.get_event_loop().get_debug()
+            try:
+                # Set a short timeout for the fallback
+                from concurrent.futures import TimeoutError
+                result = asyncio.run(asyncio.wait_for(crawl4ai_fallback(), timeout=15))
+            except asyncio.TimeoutError:
+                print("Crawl4ai fallback timed out after 15 seconds")
+                raise
+
+            import asyncio
+            result = asyncio.run(crawl4ai_fallback())
+            return result
+        except Exception as fallback_error:
+            print(f"Crawl4ai fallback also failed: {fallback_error}")
+            return {"articles": []}
 
 
 def search_google(query: str) -> dict:
     """Synchronous wrapper around google_search."""
-    return asyncio.run(google_search(query))
+    return google_search(query)
 
 
 def AI_websearch(query: str) -> dict:
@@ -383,8 +597,33 @@ def scrape_url(
 
 # ==================== Main Entry Point ====================
 if __name__ == "__main__":
-    # url = "https://www.nytimes.com"
-    # prompt = "Current events Television"
-    # a = scrape_url(url, prompt)
-    # print("Finished scraping")
-    search_google("Current events Television")
+    import sys
+
+    # Test the new selenium-based google_search function
+    try:
+        query = sys.argv[1] if len(sys.argv) > 1 else "Python tutorials"
+        print(f"Testing google_search with query: '{query}'")
+        print("-" * 50)
+
+        results = google_search(query)
+
+        print(json.dumps(results, indent=2))
+
+        if results.get("articles"):
+            print("\n--- Summary ---")
+            for article in results["articles"][:3]:
+                print(f"\nTitle: {article['title']}")
+                print(f"Link: {article['link']}")
+                print(f"Description: {article['description'][:200]}...")
+
+        print("-" * 50)
+        print("Test completed successfully!")
+
+    except ImportError as e:
+        print(f"Error: selenium is required but not installed.")
+        print(f"Install it with: pip install selenium webdriver-manager")
+        print(f"Error details: {e}")
+        sys.exit(1)
+    except Exception as e:
+        print(f"Error during search: {e}")
+        sys.exit(1)

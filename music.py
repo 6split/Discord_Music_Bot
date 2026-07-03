@@ -14,6 +14,7 @@ from youtube import search_youtube, download_from_url
 from autoplay import song_reccomendations
 from settings.settings import get_all_settings, modify_setting, populate_settings_json
 from youtube import get_related_titles
+from custom_songs import get_song_by_command
 
 SPOTIFY_CLIENT_ID = get_spotify_client_id()
 SPOTIFY_CLIENT_SECRET = get_spotify_client_secret()
@@ -44,6 +45,20 @@ class Music_Manager:
         self.current_queue = queue.Queue()
         self.voice_client = voice_client
     
+    def custom_command(self, command):
+        """
+        Adds a song to the queue based on a custom command. Should be used once command is validated.
+        """
+        song = get_song_by_command(command)
+        if song:
+            self.current_queue.put(Song(name=song['name'], filename=song['file'], url=song['url']))
+            self.current_queue.task_done()
+            if not self.voice_client.is_playing() and not self.voice_client.is_paused():
+                self.play_next()
+            print(f"Added custom song for command '{command}': {song['name']}")
+        else:
+            print(f"Song for command '{command}' not found.")
+
     def update_set_presence_function(self, set_presence_func):
         self.set_presence = set_presence_func
 

@@ -7,6 +7,7 @@ from tests.discord_tests import run_tests
 import tools
 import threading
 import time
+from custom_songs import is_song_command
 from message_history import load_message_history, create_message, save_new_message
 #We can only connect to one voice channel, so it is fine to have a global variable here
 current_voice_channel = None
@@ -60,6 +61,16 @@ async def on_message(message : discord.Message):
     
     #Handle our ! "commands"
     if message.content.startswith("!"):
+
+        #Handle custom song commands
+        if is_song_command(message.content):
+            if music_manager_instance is not None:
+                music_manager_instance.custom_command(message.content)
+                await message.reply(f"Added song for command '{message.content}' to the queue.")
+            else:
+                await message.reply("Not connected to a voice channel.")
+            return
+
         if message.content.startswith("!settings"):
             current_settings = get_all_settings()
             await message.reply(f"Current Settings: {current_settings}")

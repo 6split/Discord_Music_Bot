@@ -1,0 +1,14 @@
+[
+    {
+        "name": "Brisket_GGST",
+        "file": "custom_songs\\Brisket_GGST.mp3",
+        "url": "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+        "command": "!brisket"
+    },
+    {
+        "name": "Han_solo_solo",
+        "file": "custom_songs\\Han_solo_solo.mp3",
+        "url": "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+        "command": "!hansolo_s"
+    }
+]
