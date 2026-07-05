@@ -76,12 +76,37 @@ async def on_message(message : discord.Message):
             await message.reply(f"Current Settings: {current_settings}")
             return
         
-        if message.content == "!autoplay":
-            current_settings = get_all_settings()
-            current_autoplay = current_settings["autoplay"]
-            modify_setting("autoplay", not current_autoplay)
+        #For modifying settings we can just use the setting name
+        toggle_settings = []
+        non_toggle_settings = []
+        for setting_name in get_all_settings().keys():
+            if isinstance(get_all_settings()[setting_name], bool):
+                toggle_settings.append(setting_name)
+            else:
+                non_toggle_settings.append(setting_name)
+        is_toggle_command = any(message.content.startswith(f"!{setting_name}") for setting_name in toggle_settings)
+        is_non_toggle_command = any(message.content.startswith(f"!{setting_name}") for setting_name in non_toggle_settings)
+        if is_toggle_command:
+            try:
+                setting_name = message.content[1:]  # Remove the "!" prefix
+                current_settings = get_all_settings()
+                current_value = current_settings[setting_name]
+                modify_setting(setting_name, not current_value)
 
-            await message.reply("Autoplay now set to " + str(not current_autoplay))
+                await message.reply(f"{setting_name} now set to {not current_value}")
+            except Exception as e:
+                await message.reply(f"Error modifying setting: {e}")
+            return
+        
+        if is_non_toggle_command:
+            try:
+                setting_name = message.content.split(" ")[0][1:]  # Remove the "!" prefix
+                new_value = message.content.split(" ", 1)[1]  # Get the value after the space
+                modify_setting(setting_name, new_value)
+
+                await message.reply(f"{setting_name} now set to {new_value}")
+            except Exception as e:
+                await message.reply(f"Error modifying setting: {e}")
             return
         
         if message.content == "!join":
