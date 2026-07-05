@@ -1,6 +1,7 @@
 from music import Music_Manager
 from ollama import chat, ChatResponse
 import time
+from settings.settings import get_all_settings
 from message_history import load_message_history, create_message, save_new_message, clear_message_history
 music_mangager = None
 debug_function = None
@@ -170,8 +171,11 @@ def chat_with_tools(user_message=None):
                     most_recent_message = response.message.content
                     new_message = create_message('assistant', response.message.content)
 
+                    get_all_settings()  # Load settings to check if we should save thinking history
+
                     #Kinda Hacky fix to add thinking but it works for now.
-                    new_message['thinking'] = response.message.thinking
+                    if get_all_settings().get("thinking_history", False):
+                        new_message['thinking'] = response.message.thinking
 
                     save_new_message(new_message)
 

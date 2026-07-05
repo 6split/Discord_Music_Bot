@@ -9,6 +9,7 @@ def populate_settings_json():
         "current_model" : "azure",
         "advanced_memory" : True,
         "autoplay" : False,
+        "thinking_history" : False,
     }
     f =  open("settings/settings.json", "w")
     json.dump(settings, f)
