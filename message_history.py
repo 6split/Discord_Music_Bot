@@ -42,13 +42,16 @@ def create_message(role, content):
     #Removed timestamp due to bot loving to copy it regardless of what I put in the system prompt.
     return {"role": role, "content": f"{content}"}
 
-def compress_message_history(file_path='message_history.json', model='qwen3:8b'):
+def compress_message_history(file_path='message_history.json', model='jaahas/crow:9b'):
     """Compresses the message history using an Ollama model.
 
     Args:
         file_path (str): The path to the JSON file containing the history.
         model (str): The name of the Ollama model to use for compression.
     """
+
+    return
+
     import ollama
     history = load_message_history(file_path)
     if not history:
