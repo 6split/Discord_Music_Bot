@@ -9,6 +9,12 @@
         "name": "Han_solo_solo",
         "file": "custom_songs\\Han_solo_solo.mp3",
         "url": "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
-        "command": "!hansolo_s"
+        "command": "!han_solo_s"
+    },
+    {
+        "name": "JaneMiku",
+        "file": "custom_songs\\JaneMiku.mp3",
+        "url": "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+        "command": "!jane_miku"
     }
 ]
