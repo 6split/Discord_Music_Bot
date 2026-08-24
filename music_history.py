@@ -25,7 +25,9 @@ def save_new_music_entry(query : str, file_path : str, url : str):
     #First check if the entry already exists in the history
     for entry in music_history:
         if entry['file_path'] == file_path:
-            entry['queries'].append(query)
+            entry['url'] = url #Update the URL to the most recent one
+            if query not in entry['queries']:
+                entry['queries'].append(query)
             save_message_history(music_history, 'music_history.json')
             return
 
@@ -33,7 +35,8 @@ def save_new_music_entry(query : str, file_path : str, url : str):
     new_entry = {
         "file_path": file_path,
         "url": url,
-        "queries": [query]
+        "queries": [query],
+        "plays": 1
     }
     music_history.append(new_entry)
     save_message_history(music_history, 'music_history.json')
@@ -50,10 +53,16 @@ def file_from_query(query : str):
     music_history = load_music_history()
     for entry in music_history:
         if query in entry['queries']:
+            entry['plays'] += 1
+            save_message_history(music_history, 'music_history.json')
             return entry['file_path']
     return None
 
 if __name__ == "__main__":
-    # Example usage
+    # Testing
+    from youtube import search_youtube, download_from_url
     music_history = load_music_history()
     print(music_history)
+    save_new_music_entry("Mamma Mia ABBA song", "test.mp3", "example.com")
+    print(f"File from query: {file_from_query('Mamma Mia ABBA')}")
+    print(load_music_history())

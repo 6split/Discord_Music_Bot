@@ -8,3 +8,4 @@ venv
 .env
 crawl.json
 currentwebsearch.json
+music_history.json
