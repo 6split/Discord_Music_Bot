@@ -30,6 +30,17 @@ sp = spotipy.Spotify(auth_manager=SpotifyOAuth(
     scope="playlist-read-private" # Add required scopes here
 ))
 
+def check_if_link(url : str):
+    """
+    Checks if a given string is a valid URL.
+
+    Args:
+        url (str): The string to check.
+    Returns:
+        bool: True if the string is a valid URL, False otherwise.
+    """
+    return url.startswith("http://") or url.startswith("https://")
+
 @dataclass
 class Song:
     name : str
@@ -65,8 +76,12 @@ class Music_Manager:
     def update_voice_client(self, new_voice_client : discord.VoiceClient):
         self.voice_client = new_voice_client
 
+    #Changed to also handle links
     def request_song(self, song_name : str):
-        requested_song = song_from_youtube(song_name + " song")
+        if check_if_link(song_name):
+            requested_song = song_from_url(song_name)
+        else:
+            requested_song = song_from_youtube(song_name + " song")
         self.current_queue.put(requested_song)
         self.current_queue.task_done()
         if not self.voice_client.is_playing() and not self.voice_client.is_paused():
@@ -176,6 +191,11 @@ def song_from_youtube(search_query):
     song = Song(search_query, file, result)
     return song
 
+def song_from_url(url):
+    file = download_from_url(url)
+    song = Song(url, file, url)
+    return song
+
 def spotify_reccomendation(song, autoplayed_songs=[]):
     results = sp.search(q=song, type="playlist", limit=5)
     song_names = []
@@ -224,5 +244,6 @@ def chatbot_reccomendation(song, autoplayed_songs=[]):
 
 if __name__ == "__main__":
     song_name = "Get Lucky Daft Punk"
-    print(song_reccomendations(song_name))
-    print(f"Response: {chatbot_reccomendation(song_name)}")
+    print(search_youtube(song_name + " song", 1)[0])
+    # print(song_reccomendations(song_name))
+    # print(f"Response: {chatbot_reccomendation(song_name)}")

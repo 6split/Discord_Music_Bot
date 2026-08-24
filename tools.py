@@ -17,7 +17,7 @@ def init_tools(music_manager : Music_Manager, debug_func=None):
 def request_song_tool(song_name):
     """Tool function to request a song to be played by the music manager. Takes in the name of the song as an argument."""
     """Args:
-        song_name (str): The name of the song to be played. Can include the artist
+        song_name (str): The name of the song to be played. Can include the artist. Also can be a link to a song.
         Returns:
         str: A message indicating the song that was requested.
     """

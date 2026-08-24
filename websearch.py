@@ -42,9 +42,9 @@ except ImportError:
 class Config:
     """Centralized configuration constants."""
     MAX_ITERATIONS = 20
-    DEFAULT_LLM_PROVIDER = "ollama/qwen3:8b"
+    DEFAULT_LLM_PROVIDER = "ollama/qwen3.5:2b"
     EMBEDDING_LLM_PROVIDER = "ollama/qwen3-embedding:4b"
-    CHUNK_TOKEN_THRESHOLD = 2048
+    CHUNK_TOKEN_THRESHOLD = 8000
     CHUNK_OVERLAP_RATE = 0.01
     EXTRA_ARGS = {"temperature": 0.0, "max_tokens": 5000}
     MIN_CONTENT_LENGTH = 100
@@ -213,45 +213,55 @@ def _parse_google_search_results(html: str) -> List[dict]:
                 }
             kb0pbd_by_parent[parent_key]['containers'].append(container)
 
-    print(f"DEBUG: Found {len(kb0pbd_by_parent)} groups of kb0PBd containers")
+    print(f"DEBUG: Found {len(kb0pbd_containers)} kb0PBd result containers")
 
-    for parent_key, data in kb0pbd_by_parent.items():
-        parent = soup.select_one(f'[{parent_key[0]}][class*="{parent_key[1][0]}"]')
+    # Process each kb0PBd container directly
+    for container in kb0pbd_containers:
+        # Get the parent div (should have N54PNb BToiNc classes)
+        parent = container.parent
         if not parent:
             continue
 
         # Get the title from h3 inside the parent div
         title_tag = parent.find("h3")
         title = title_tag.get_text(strip=True) if title_tag else ""
-        data['title'] = title
 
-        # Clean up title - remove excessive whitespace and normalize
-        title = " ".join(title.split())
+        # Find the anchor tag inside this container
+        anchors = container.find_all("a", href=True)
+        if not anchors:
+            continue
 
-        # Process each kb0PBd container in this group
-        for container in data['containers']:
-            # Find the anchor tag inside this container
-            anchors = container.find_all("a", href=True)
-            if not anchors:
-                continue
+        anchor = anchors[0]  # Take the first anchor (should be the result link)
+        link = anchor["href"]
 
-            anchor = anchors[0]  # Take the first anchor (should be the result link)
-            link = anchor["href"]
+        # Skip Google's own pages (internal navigation)
+        parsed_url = urlparse(link)
+        if "google.com" in parsed_url.netloc or not parsed_url.path:
+            continue
 
-            # Skip Google's own pages (internal navigation)
-            parsed_url = urlparse(link)
-            if "google.com" in parsed_url.netloc or not parsed_url.path:
-                continue
+        # Parse description from the container - look for meta description or text content
+        description_elements = container.find_all(["meta", "span", "p"])
+        description = ""
+        for elem in description_elements:
+            if elem.name == "meta" and elem.get("name") == "description":
+                description = elem.get("content", "")
+                break
+            elif elem.name in ("span", "p"):
+                text = elem.get_text(strip=True)
+                if text and len(text) > 2:
+                    description += text + "\n"
 
-            # Clean up description - remove excessive whitespace
-            description = " ".join(description.split())
+        # Clean up description - remove excessive whitespace
+        description = " ".join(description.split())
 
-            if title and len(title) > 2:
-                results.append({
-                    "title": title,
-                    "link": link,
-                    "description": description
-                })
+        if title and len(title) > 2:
+            results.append({
+                "title": title,
+                "link": link,
+                "description": description
+            })
+
+    print(f"DEBUG: Parsed {len(results)} results")
 
     print(f"DEBUG: Parsed {len(results)} results")
     return results
@@ -346,7 +356,7 @@ def google_search(query: str) -> dict:
             query = query.replace(" ", "+")
             url = f"https://www.google.com/search?q={query}"
 
-            browser_cfg = BrowserConfig(headless=False)
+            browser_cfg = BrowserConfig(headless=True)
 
             extraction_strategy = _get_search_extraction_strategy()
 
@@ -362,20 +372,16 @@ def google_search(query: str) -> dict:
                         results.append(result)
                 return results[0].extracted_content if results else {"articles": []}
 
-            import asyncio
-            # Reduce timeout significantly for fallback to avoid hanging
-            original_timeout = asyncio.get_event_loop().get_debug()
-            try:
-                # Set a short timeout for the fallback
-                from concurrent.futures import TimeoutError
-                result = asyncio.run(asyncio.wait_for(crawl4ai_fallback(), timeout=15))
-            except asyncio.TimeoutError:
-                print("Crawl4ai fallback timed out after 15 seconds")
-                raise
-
-            import asyncio
-            result = asyncio.run(crawl4ai_fallback())
+            # Run the fallback with a hard timeout so a stalled crawl can't
+            # block the whole pipeline. Single asyncio.run call avoids the
+            # previous double-execution bug.
+            result = asyncio.run(
+                asyncio.wait_for(crawl4ai_fallback(), timeout=15)
+            )
             return result
+        except asyncio.TimeoutError:
+            print("Crawl4ai fallback timed out after 15 seconds")
+            return {"articles": []}
         except Exception as fallback_error:
             print(f"Crawl4ai fallback also failed: {fallback_error}")
             return {"articles": []}
@@ -397,6 +403,76 @@ def AI_websearch(query: str) -> dict:
         dict: Extracted search results
     """
     return asyncio.run(google_search(query))
+
+
+def linked_websearch(query: str) -> list:
+    """
+    Perform a Google search and iteratively explore top links until enough info is gathered.
+
+    This function chains together Google search results, crawling each top link
+    until a sufficient amount of relevant information has been extracted. When one
+    page provides insufficient information, it moves to the next result.
+
+    Args:
+        query: The search query string
+
+    Returns:
+        list: List of extracted content strings from all pages visited
+
+    Note:
+        The function stops when extracting data reaches the result length threshold.
+    """
+    # Get search results
+    results = google_search(query)
+    articles = results.get("articles", [])
+
+    if not articles:
+        print(f"No search results found for query: '{query}'")
+        return []
+
+    print(f"Found {len(articles)} search results")
+    print("Starting iterative link exploration...")
+
+    extracted_data: list = []
+    # Track the length contributed by the most recent link so we can
+    # cheaply decide whether to stop without re-summing the full history
+    # on every iteration.
+    last_link_len = 0
+
+    # Define the callback once instead of rebuilding a lambda per link.
+    def _on_progress(p: str) -> None:
+        print(f"[{p}]", end="")
+
+    for idx, article in enumerate(articles):
+        url = article.get("link")
+        title = article.get("title", "")
+
+        print(f"\n--- Link {idx + 1} ---")
+        print(f"Title: {title}")
+        print(f"URL: {url}")
+
+        crawled = asyncio.run(
+            crawl_for_info(
+                website=url,
+                query=query,
+                callback=_on_progress,
+                need_more_links=False,
+            )
+        )
+
+        prev_total = sum(len(d) for d in extracted_data)
+        extracted_data.extend(crawled)
+        last_link_len = sum(len(d) for d in extracted_data) - prev_total
+
+        # Check if the most recent link produced enough new information
+        if last_link_len >= Config.RESULT_LENGTH_THRESHOLD:
+            print(f"Reached goal: gathered {len(extracted_data)} items with {last_link_len} new chars")
+            break
+
+        print(f"After link: {last_link_len} new chars so far")
+
+    print(f"\nStopped at {len(extracted_data)} collected items after exploring {idx + 1} links")
+    return extracted_data[:]
 
 
 async def crawl_for_info(
@@ -424,11 +500,12 @@ async def crawl_for_info(
     potential_links = []
     page_urls: List[str] = []
 
+    #If we don't need more links, just add the starting website to the list
+    if not need_more_links:
+        page_urls.append(website)
+
     # Adaptive crawling loop
     while need_more_links and iterations < Config.MAX_ITERATIONS:
-        max_pages = Config.ADAPTIVE_BASE_MAX_PAGES + iterations * 100
-        top_k_links = Config.ADAPTIVE_BASE_TOP_K_LINKS + iterations * 20
-
         # Create adaptive config
         config = _get_adaptive_config(iterations)
 
@@ -471,71 +548,87 @@ async def crawl_for_info(
             break
 
     # Extract information from collected pages
-    data_list: list[str] = []
-    count = 0
-
-    for page_url in page_urls:
-        count += 1
-
-        # Callback with progress update
-        if callback:
-            status = f"Website scrape progress: {count}/{len(page_urls)}"
-            if estimated_time_left > 1:
-                status += f" Estimated Time Left: {estimated_time_left}"
-            callback(f"Looking at Website: {page_url}. Source: {website}. {status}")
-
-        # Create extraction strategy for this page
-        prompt = f"""You are given a website as part of a larger web scraping taskforce to find relevant information.
+    # Build the extraction strategy and crawl config once — they are identical
+    # for every page in this loop, and rebuilding the BrowserConfig and
+    # AsyncWebCrawler per page was the dominant cost.
+    prompt = f"""You are given a website as part of a larger web scraping taskforce to find relevant information.
 Query: "{query}"
 
 The summary field should include all important details.
 Exclude titles, navigation elements, sidebars, and footer content.
 If the page has no content related to the query, set relevant to False.
 """
-        schema = Info.model_json_schema()
-        llm_strategy = _get_llm_extraction_strategy(
-            prompt=prompt,
-            schema=schema,
-        )
+    schema = Info.model_json_schema()
+    llm_strategy = _get_llm_extraction_strategy(
+        prompt=prompt,
+        schema=schema,
+    )
 
-        # Crawl configuration
-        crawl_config = CrawlerRunConfig(
-            extraction_strategy=llm_strategy,
-            cache_mode=CacheMode.BYPASS,
-            fetch_ssl_certificate=True,
-            wait_for_images=True,
-        )
+    crawl_config = CrawlerRunConfig(
+        extraction_strategy=llm_strategy,
+        cache_mode=CacheMode.BYPASS,
+    )
 
-        async with AsyncWebCrawler(config=BrowserConfig(headless=False)) as crawler:
+    data_list: list[str] = []
+    seen: set[str] = set()
+    result_len = 0
+    count = 0
+    total_pages = len(page_urls)
+
+    # Reuse a single browser across all pages instead of spawning one per page.
+    # headless=True is dramatically faster than headless=False for unattended runs.
+    browser_cfg = BrowserConfig(headless=True)
+
+    async with AsyncWebCrawler(config=browser_cfg) as crawler:
+        for page_url in page_urls:
+            count += 1
+
+            # Callback with progress update
+            if callback:
+                status = f"Website scrape progress: {count}/{total_pages}"
+                if estimated_time_left > 1:
+                    status += f" Estimated Time Left: {estimated_time_left}"
+                callback(f"Looking at Website: {page_url}. Source: {website}. {status}")
+
             result = await crawler.arun(url=page_url, config=crawl_config)
 
-            if result.success:
+            if not result.success:
+                print(f"Error crawling {page_url}: {result.error_message}")
+                continue
+
+            try:
                 data = json.loads(result.extracted_content)
+            except (TypeError, ValueError):
+                continue
 
-                # Filter for relevant content
-                for item in data:
-                    try:
-                        # Handle both 'relevant' and 'relevannt' keys
-                        relevant = item.get("relevant", False)
-                        if not isinstance(relevant, bool):
-                            relevant = item.get("relevannt", False)
+            # Filter for relevant content
+            for item in data:
+                try:
+                    # Handle both 'relevant' and 'relevannt' keys
+                    relevant = item.get("relevant", False)
+                    if not isinstance(relevant, bool):
+                        relevant = item.get("relevannt", False)
 
-                        if relevant:
-                            summary = item.get("summary", "")
-                            if summary.strip() != query:
-                                data_list.append(summary)
-                    except Exception:
+                    if not relevant:
                         continue
 
-                # Deduplicate and convert back to list
-                data_list = list(set(data_list))
+                    summary = item.get("summary", "")
+                    if not summary or summary.strip() == query:
+                        continue
 
-                # Check if we have enough content
-                result_len = sum(len(s) for s in data_list)
-                if result_len > Config.RESULT_LENGTH_THRESHOLD and count >= 3:
-                    break
-            else:
-                print(f"Error crawling {page_url}: {result.error_message}")
+                    # O(1) deduplication
+                    if summary in seen:
+                        continue
+                    seen.add(summary)
+                    data_list.append(summary)
+                    result_len += len(summary)
+
+                except Exception:
+                    continue
+
+            # Check if we have enough content
+            if result_len > Config.RESULT_LENGTH_THRESHOLD and count >= 3:
+                break
 
     elapsed = time.time() - start_time
     print(f"Extracted {len(data_list)} items in {elapsed:.2f} seconds")
@@ -601,23 +694,13 @@ if __name__ == "__main__":
 
     # Test the new selenium-based google_search function
     try:
-        query = sys.argv[1] if len(sys.argv) > 1 else "Python tutorials"
-        print(f"Testing google_search with query: '{query}'")
-        print("-" * 50)
+        test_query = sys.argv[1] if len(sys.argv) > 1 else "Python Web Scraping Libraries"
 
-        results = google_search(query)
-
-        print(json.dumps(results, indent=2))
-
-        if results.get("articles"):
-            print("\n--- Summary ---")
-            for article in results["articles"][:3]:
-                print(f"\nTitle: {article['title']}")
-                print(f"Link: {article['link']}")
-                print(f"Description: {article['description'][:200]}...")
-
-        print("-" * 50)
-        print("Test completed successfully!")
+        start_time = time.time()
+        print(f"\nTesting linked_websearch with query: '{test_query}'")
+        linked_results = linked_websearch(test_query)
+        print(json.dumps(linked_results, indent=2))
+        print("Test completed in {:.2f} seconds".format(time.time() - start_time))
 
     except ImportError as e:
         print(f"Error: selenium is required but not installed.")
