@@ -50,7 +50,7 @@ def compress_message_history(file_path='message_history.json', model='jaahas/cro
         model (str): The name of the Ollama model to use for compression.
     """
 
-    return
+    return #Temporarily disabled to avoid issues with inflated response time
 
     import ollama
     history = load_message_history(file_path)

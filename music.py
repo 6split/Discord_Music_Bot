@@ -16,6 +16,8 @@ from settings.settings import get_all_settings, modify_setting, populate_setting
 from youtube import get_related_titles
 from custom_songs import get_song_by_command
 
+from music_history import load_music_history, save_new_music_entry, file_from_query
+
 SPOTIFY_CLIENT_ID = get_spotify_client_id()
 SPOTIFY_CLIENT_SECRET = get_spotify_client_secret()
 #Create the spotify client
@@ -78,6 +80,9 @@ class Music_Manager:
 
     #Changed to also handle links
     def request_song(self, song_name : str):
+
+        #TODO - add music history functionality from music_history.py
+
         if check_if_link(song_name):
             requested_song = song_from_url(song_name)
         else:
@@ -112,6 +117,7 @@ class Music_Manager:
         audio_source = discord.FFmpegPCMAudio(song.filename, executable='C:\\ffmpeg\\bin\\ffmpeg.exe', options=f"-b:a 256")
         self.voice_client.play(audio_source, bitrate=256, signal_type='music', after=self.play_next)
         self.song_history.append(song.name)
+        save_new_music_entry(song.name, song.filename, song.url)
         if self.voice_client.is_playing() and self.set_presence is not None:
             self.set_presence(f"Playing: {song.name[0:len(song.name)-5]}")  #Set presence to the song name, removing the " song" at the end
     def _create_autoplay_song(self):
