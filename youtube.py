@@ -12,17 +12,24 @@ def download_from_url(url):
     Args:
         url: The video URL to download
     """
-    yt = YouTube(url)
-    video = yt.streams.filter(only_audio=True).first()
     # download the file
     new_file = 'voice'
     try:
-        out_file = video.download(".\\music")
+        ydl_opts = {
+            'quiet': True,
+            'noprogress': True,
+            'format': 'bestaudio/best',
+            'outtmpl': os.path.join(".\\music", '%(title)s.%(ext)s'),
+            'noplaylist': True,
+        }
+        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+            info = ydl.extract_info(url, download=True)
+            out_file = ydl.prepare_filename(info)
 
         # save the file
         base, ext = os.path.splitext(out_file)
         new_file = base + '.mp3'
-        os.rename(out_file, new_file)
+        os.replace(out_file, new_file)
     except:
         return new_file
     return new_file
@@ -37,7 +44,7 @@ def search_youtube(query, num_results=5):
     return urls
 
 def get_related_videos(url, limit=50):
-    yt = YouTube(url)
+    yt = YouTube(url, 'WEB')
     data = yt.vid_details
 
     results = []
@@ -102,7 +109,7 @@ def get_related_titles(query, num_results=5):
     first_video = s.results[0]
 
     # Create a YouTube object from the first result
-    yt = YouTube(first_video.watch_url)
+    yt = YouTube(first_video.watch_url, 'WEB')
     print(f"First video title: {yt.title}, URL: {yt.watch_url}")
     related_videos = get_related_videos(yt.watch_url, limit=num_results)
 
@@ -207,3 +214,5 @@ if __name__ == "__main__":
 
     t = get_related_titles("Get Lucky", num_results=5)
     print(t)
+    r = search_youtube("Get Lucky", num_results=5)
+    print(download_from_url(r[0]))

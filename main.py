@@ -8,6 +8,7 @@ import tools
 import threading
 import time
 from custom_songs import is_song_command
+from music_history import get_top_songs
 from message_history import load_message_history, create_message, save_new_message
 #We can only connect to one voice channel, so it is fine to have a global variable here
 current_voice_channel = None
@@ -129,6 +130,33 @@ async def on_message(message : discord.Message):
                 await message.reply("Skipped current song.")
             else:
                 await message.reply("Not connected to a voice channel.")
+            return
+
+        #Command for showing the most played songs, e.g. "!top_song" or "!top_song 10"
+        if message.content.startswith("!top_song"):
+            parts = message.content.split()
+            if parts[0] != "!top_song" or (len(parts) > 1 and not parts[1].isdigit()):
+                await message.reply("Usage: !top_song [number]")
+                return
+            num_songs = int(parts[1]) if len(parts) > 1 else 5
+            if num_songs < 1:
+                await message.reply("Please provide a number of 1 or greater.")
+                return
+            top_songs = get_top_songs(num_songs)
+            if len(top_songs) == 0:
+                await message.reply("No songs have been played yet.")
+                return
+            song_lines = []
+            for rank, entry in enumerate(top_songs, start=1):
+                song_name = entry['queries'][0] if entry.get('queries') else entry['file_path']
+                song_name = song_name[:120]  #Keep long song names from blowing up the message
+                song_lines.append(f"{rank}. {song_name} - {entry.get('plays', 0)} plays")
+            reply_text = f"Top {len(top_songs)} most played song(s):\n" + "\n".join(song_lines)
+            #Trim the list if it would exceed Discord's message length limit
+            while len(reply_text) > 1990 and len(song_lines) > 1:
+                song_lines.pop()
+                reply_text = f"Top {len(song_lines)} most played songs (out of {len(top_songs)}):\n" + "\n".join(song_lines)
+            await message.reply(reply_text)
             return
 
         

@@ -2,6 +2,7 @@ import discord
 import random
 #Thread safe queue implementation
 import queue
+import os
 
 from ollama import chat, ChatResponse
 from dataclasses import dataclass
@@ -80,13 +81,18 @@ class Music_Manager:
 
     #Changed to also handle links
     def request_song(self, song_name : str):
-
-        #TODO - add music history functionality from music_history.py
-
         if check_if_link(song_name):
             requested_song = song_from_url(song_name)
         else:
-            requested_song = song_from_youtube(song_name + " song")
+            #Check the music history to see if this query has been played before,
+            #so the already downloaded file can be reused instead of searching and downloading again.
+            #The play is counted when the song actually starts playing in _play_song,
+            #so we do a lookup without counting a play here to avoid counting it twice.
+            known_file = file_from_query(song_name + " song", count_play=False)
+            if known_file and os.path.isfile(known_file):
+                requested_song = Song(song_name + " song", known_file, "")
+            else:
+                requested_song = song_from_youtube(song_name + " song")
         self.current_queue.put(requested_song)
         self.current_queue.task_done()
         if not self.voice_client.is_playing() and not self.voice_client.is_paused():

@@ -25,9 +25,11 @@ def save_new_music_entry(query : str, file_path : str, url : str):
     #First check if the entry already exists in the history
     for entry in music_history:
         if entry['file_path'] == file_path:
-            entry['url'] = url #Update the URL to the most recent one
+            if url: #Only update the URL if one was provided, so a cached play doesn't wipe the known URL
+                entry['url'] = url #Update the URL to the most recent one
             if query not in entry['queries']:
                 entry['queries'].append(query)
+            entry['plays'] = entry.get('plays', 0) + 1 #The song has been played again
             save_message_history(music_history, 'music_history.json')
             return
 
@@ -42,21 +44,35 @@ def save_new_music_entry(query : str, file_path : str, url : str):
     save_message_history(music_history, 'music_history.json')
     return
 
-def file_from_query(query : str):
+def file_from_query(query : str, count_play : bool = True):
     """Retrieves the file path for a given search query from the music history.
 
     Args:
         query (str): The search query to look for.
+        count_play (bool): Whether to count this lookup as a play of the song. Defaults to True.
     Returns:
         str: The file path associated with the search query, or None if not found.
     """
     music_history = load_music_history()
     for entry in music_history:
         if query in entry['queries']:
-            entry['plays'] += 1
-            save_message_history(music_history, 'music_history.json')
+            if count_play:
+                entry['plays'] = entry.get('plays', 0) + 1
+                save_message_history(music_history, 'music_history.json')
             return entry['file_path']
     return None
+
+def get_top_songs(num_songs : int = 5):
+    """Returns the most played songs from the music history, ordered from most played to least played.
+
+    Args:
+        num_songs (int): The maximum number of songs to return. Defaults to 5.
+    Returns:
+        list: A list of the most played music history entries, sorted by plays in descending order.
+    """
+    music_history = load_music_history()
+    sorted_songs = sorted(music_history, key=lambda entry: entry.get('plays', 0), reverse=True)
+    return sorted_songs[:num_songs]
 
 if __name__ == "__main__":
     # Testing
