@@ -136,7 +136,7 @@ def chat_with_tools(user_message=None):
 
     for i in range(10):  # Limit to 10 iterations to avoid infinite loops
         response: ChatResponse = chat(
-            model='jaahas/crow:9b',
+            model='glm-5.3-flash:cloud',
             messages=messages,
             tools=[request_song_tool, pause_tool, resume_tool, skip_song_tool, retrieve_queue_tool],
             think=True,
@@ -167,6 +167,8 @@ def chat_with_tools(user_message=None):
             # end the loop when there are no more tool calls
             thinking = False
             if response.message.content or response.message.thinking:
+                if response.message.thinking:
+                    debug_function(f"Thinking: {response.message.thinking}")
                 if response.message.content:
                     most_recent_message = response.message.content
                     new_message = create_message('assistant', response.message.content)
@@ -176,12 +178,9 @@ def chat_with_tools(user_message=None):
                     #Kinda Hacky fix to add thinking but it works for now.
                     if get_all_settings().get("thinking_history", False):
                         new_message['thinking'] = response.message.thinking
+                        save_new_message(new_message)
+                    break
 
-                    save_new_message(new_message)
-
-                break
-            elif response.message.thinking:
-                debug_function(f"Thinking: {response.message.thinking}")
             
     if debug_function is not None:
         if not most_recent_message:
